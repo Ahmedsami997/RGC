@@ -1,0 +1,1182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Outlet P&L Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0E1626;
+    --paper:#F3F6F5;
+    --surface:#FFFFFF;
+    --surface-2:#EAF0EE;
+    --line:#DDE4E2;
+    --muted:#5B6B72;
+    --navy:#1F3557;
+    --navy-ink:#0C1730;
+    --gold:#B8862F;
+    --gold-soft:#F4EAD0;
+    --fairway:#1F7A4D;
+    --fairway-soft:#E4F3EA;
+    --amber:#C98A12;
+    --amber-soft:#FBF0DC;
+    --clay:#C0392B;
+    --clay-soft:#FBE7E4;
+    --radius:10px;
+    --shadow:0 1px 2px rgba(14,22,38,.06), 0 6px 18px -8px rgba(14,22,38,.12);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#EAF1F7;
+      --paper:#0B111C;
+      --surface:#111A29;
+      --surface-2:#16202F;
+      --line:#22303F;
+      --muted:#8CA0AE;
+      --navy:#7FA6D9;
+      --navy-ink:#0C1730;
+      --gold:#E4C077;
+      --gold-soft:#241D0F;
+      --fairway:#57C687;
+      --fairway-soft:#0F2419;
+      --amber:#E7B04C;
+      --amber-soft:#2A2110;
+      --clay:#E8746A;
+      --clay-soft:#2C1512;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -10px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#EAF1F7; --paper:#0B111C; --surface:#111A29; --surface-2:#16202F; --line:#22303F; --muted:#8CA0AE;
+    --navy:#7FA6D9; --navy-ink:#0C1730; --gold:#E4C077; --gold-soft:#241D0F; --fairway:#57C687; --fairway-soft:#0F2419;
+    --amber:#E7B04C; --amber-soft:#2A2110; --clay:#E8746A; --clay-soft:#2C1512;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -10px rgba(0,0,0,.5);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:'Manrope',ui-sans-serif,system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .disp{font-family:'Fraunces',Georgia,serif; text-wrap:balance;}
+  .num{font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace; font-variant-numeric:tabular-nums;}
+  h1,h2,h3{text-wrap:balance; margin:0;}
+  .eyebrow{font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted);}
+
+  .shell{display:flex; min-height:100vh;}
+  .sidebar{
+    width:246px; flex-shrink:0; background:var(--navy-ink); color:#C9D6E6;
+    display:flex; flex-direction:column; position:sticky; top:0; height:100vh; overflow-y:auto;
+  }
+  .brand{display:flex; align-items:center; gap:10px; padding:20px 18px 16px;}
+  .brand-mark{width:36px;height:36px;border-radius:8px;background:linear-gradient(155deg,var(--gold),#8F6A22);display:flex;align-items:center;justify-content:center;color:#241D0F;font-weight:800;font-size:12px;font-family:'Fraunces',serif;flex-shrink:0;}
+  .brand-name{font-size:13.5px; font-weight:700; color:#fff; line-height:1.25;}
+  .brand-sub{font-size:10.5px; color:#8FA3BC;}
+  nav{padding:6px 10px; display:flex; flex-direction:column; gap:2px; flex:1;}
+  .nav-btn{
+    display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:8px; border:none; background:transparent;
+    color:#AEC0D5; font-family:inherit; font-size:12.8px; font-weight:600; text-align:left; cursor:pointer; width:100%;
+  }
+  .nav-btn:hover{background:#16233A; color:#fff;}
+  .nav-btn.active{background:#1B2C48; color:#fff;}
+  .nav-ic{width:16px;height:16px;flex-shrink:0;}
+  .nav-badge{margin-left:auto; background:var(--clay); color:#fff; font-size:10px; font-weight:800; border-radius:99px; padding:1px 6px; font-family:'IBM Plex Mono',monospace;}
+  .sidebar-foot{padding:14px 18px 18px; font-size:10.5px; color:#6E82A0; border-top:1px solid #1C2A42;}
+
+  .main{flex:1; min-width:0; display:flex; flex-direction:column;}
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 22px 8px; flex-wrap:wrap;
+  }
+  .page-title{font-size:19px; font-weight:800;}
+  .page-sub{font-size:12px; color:var(--muted); margin-top:2px;}
+  .live-pill{display:inline-flex; align-items:center; gap:5px; font-size:10.5px; font-weight:700; color:var(--fairway); background:var(--fairway-soft); border-radius:99px; padding:2px 9px; margin-left:8px; vertical-align:middle;}
+  .live-dot{width:6px;height:6px;border-radius:99px;background:var(--fairway); animation:pulse 1.6s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .clock{font-size:11px; color:var(--muted); text-align:right; font-family:'IBM Plex Mono',monospace;}
+
+  .filterbar{display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 22px; border-bottom:1px solid var(--line); background:var(--surface);}
+  select, .btn{
+    font-family:inherit; font-size:12px; font-weight:600; color:var(--ink); background:var(--surface);
+    border:1px solid var(--line); border-radius:7px; padding:6px 10px; cursor:pointer;
+  }
+  select:focus, .btn:focus, button:focus-visible{outline:2px solid var(--navy); outline-offset:1px;}
+  .seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; padding:2px; background:var(--surface-2);}
+  .seg button{border:none; background:transparent; font-family:inherit; font-size:11.5px; font-weight:700; padding:5px 10px; border-radius:6px; cursor:pointer; color:var(--muted);}
+  .seg button.on{background:var(--navy); color:#fff;}
+  .spacer{flex:1;}
+
+  .content{padding:18px 22px 60px;}
+  .grid{display:grid; gap:14px;}
+  .g-2{grid-template-columns:repeat(2,1fr);}
+  .g-3{grid-template-columns:repeat(3,1fr);}
+  .g-4{grid-template-columns:repeat(4,1fr);}
+  .g-6{grid-template-columns:repeat(6,1fr);}
+  @media (max-width:1100px){.g-4{grid-template-columns:repeat(2,1fr);} .g-6{grid-template-columns:repeat(3,1fr);} .g-3{grid-template-columns:repeat(2,1fr);}}
+  @media (max-width:640px){.g-2,.g-3,.g-4,.g-6{grid-template-columns:1fr 1fr;}}
+
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow);}
+  .card-pad{padding:16px;}
+  .card-head{padding:14px 16px 0;}
+  .card-title{font-size:13px; font-weight:800;}
+  .card-desc{font-size:11.5px; color:var(--muted); margin-top:2px;}
+
+  .stat-label{font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); display:flex; align-items:center; gap:5px;}
+  .stat-value{font-size:21px; font-weight:700; margin-top:4px; white-space:nowrap;}
+
+  .kpi-top{display:flex; align-items:center; justify-content:space-between;}
+  .kpi-label{font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--muted);}
+  .kpi-actual{font-size:22px; font-weight:700; margin-top:2px; white-space:nowrap;}
+  .kpi-sub{display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:10px 0; font-size:10.5px;}
+  .kpi-sub b{display:block; font-size:12px;}
+  .trend{display:inline-flex; align-items:center; gap:2px; font-size:11px; font-weight:700; font-family:'IBM Plex Mono',monospace;}
+  .up{color:var(--fairway)} .down{color:var(--clay)} .flat{color:var(--muted)}
+
+  table{width:100%; border-collapse:collapse; font-size:12px;}
+  th{font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); white-space:nowrap;}
+  td{padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:var(--surface-2);}
+  .r{text-align:right;}
+  .tbl-wrap{overflow-x:auto;}
+
+  .badge{display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:99px;}
+  .b-success{background:var(--fairway-soft); color:var(--fairway);}
+  .b-warning{background:var(--amber-soft); color:var(--amber);}
+  .b-danger{background:var(--clay-soft); color:var(--clay);}
+  .b-navy{background:#E7EEF6; color:var(--navy);}
+  .b-gold{background:var(--gold-soft); color:var(--gold);}
+  :root[data-theme="dark"] .b-navy{background:#1B2C48;}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .b-navy{background:#1B2C48;}}
+
+  .alert{display:flex; align-items:center; gap:8px; border-radius:9px; padding:9px 13px; font-size:12.5px; font-weight:600; border:1px solid;}
+  .alert-critical{background:var(--clay-soft); border-color:color-mix(in srgb, var(--clay) 35%, transparent); color:var(--clay);}
+  .alert-warning{background:var(--amber-soft); border-color:color-mix(in srgb, var(--amber) 35%, transparent); color:var(--amber);}
+  .alert-info{background:var(--fairway-soft); border-color:color-mix(in srgb, var(--fairway) 35%, transparent); color:var(--fairway);}
+
+  .tile-btn{border:1px solid var(--line); background:var(--surface); border-radius:10px; padding:12px 14px; text-align:left; cursor:pointer; font-family:inherit;}
+  .tile-btn.on{border-color:var(--navy); background:var(--surface-2);}
+  .tile-count{font-size:22px; font-weight:800; font-family:'IBM Plex Mono',monospace; margin-top:2px;}
+
+  ::-webkit-scrollbar{width:8px; height:8px;} ::-webkit-scrollbar-thumb{background:var(--line); border-radius:99px;}
+
+  .section-hidden{display:none;}
+  a{color:inherit;}
+  .app-select{position:relative;}
+  .outlet-list{max-height:640px; overflow-y:auto;}
+  .outlet-item{display:block; width:100%; text-align:left; border:none; background:transparent; padding:9px 14px; border-bottom:1px solid var(--line); cursor:pointer; font-family:inherit;}
+  .outlet-item:hover{background:var(--surface-2);}
+  .outlet-item.on{background:#E7EEF6;}
+  :root[data-theme="dark"] .outlet-item.on{background:#16233A;}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .outlet-item.on{background:#16233A;}}
+  .outlet-item .nm{font-size:12.5px; font-weight:700;}
+  .outlet-item .mt{font-size:10.5px; color:var(--muted);}
+
+  .heatcell{width:26px;height:20px;border-radius:4px; display:inline-block; margin-right:3px;}
+  .mono-small{font-family:'IBM Plex Mono',monospace; font-size:10.5px;}
+
+  .section-label{font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); background:var(--surface-2); padding:5px 10px;}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">RGC</div>
+      <div>
+        <div class="brand-name">Royal Golf Club</div>
+        <div class="brand-sub">Outlet P&amp;L Command Center</div>
+      </div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="sidebar-foot">Self-hosted &middot; localhost:5053<br>Live data from Odoo (Restaurants-POS)</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="page-title" id="pageTitle">—<span class="live-pill"><span class="live-dot"></span>Live</span></div>
+        <div class="page-sub" id="pageSub"></div>
+      </div>
+      <div class="clock" id="clock"></div>
+    </div>
+    <div class="filterbar">
+      <select id="fPeriod"></select>
+      <select id="fRegion"></select>
+      <select id="fCategory"></select>
+      <div class="seg" id="fScale">
+        <button data-scale="realistic" class="on">Club (Live Scope)</button>
+        <button data-scale="network">Network Scale Demo</button>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn" id="btnRefresh">&#8635; Refresh</button>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<script>
+/* ============================== DESIGN TOKENS (JS mirrors) ============================== */
+const COLOR = {
+  navy: '#1F3557', gold: '#B8862F', fairway: '#1F7A4D', amber: '#C98A12', clay: '#C0392B', muted:'#5B6B72', line:'#DDE4E2'
+};
+
+/* ============================== ICONS (minimal monoline) ============================== */
+const ICONS = {
+  overview:'<circle cx="8" cy="8" r="2.4"/><path d="M2 8h3.2M12.8 8H14M8 2v3.2M8 12.8V14" stroke-linecap="round"/>',
+  tower:'<path d="M8 1.5 13.5 4v3c0 4-2.4 6.6-5.5 7.5C4.9 13.6 2.5 11 2.5 7V4L8 1.5Z"/><path d="M5.6 8.1 7.2 9.7l3.2-3.4" stroke-linecap="round" stroke-linejoin="round"/>',
+  pnl:'<rect x="3" y="1.8" width="10" height="12.4" rx="1"/><path d="M5.3 5h5.4M5.3 7.4h5.4M5.3 9.8h3.2" stroke-linecap="round"/>',
+  rank:'<path d="M8 1.6 9.6 5l3.7.5-2.7 2.6.6 3.7L8 10.1l-3.2 1.7.6-3.7L2.7 5.5 6.4 5 8 1.6Z"/>',
+  regional:'<circle cx="8" cy="8" r="6.2"/><path d="M1.8 8h12.4M8 1.8c2 2.2 2 10.2 0 12.4M8 1.8c-2 2.2-2 10.2 0 12.4" />',
+  budget:'<path d="M2.5 4.2h11M4 4.2v9.3M12 4.2v9.3M4 13.5h8" stroke-linecap="round"/><circle cx="8" cy="2" r="1"/>',
+  lfl:'<path d="M2 12.5 6 8l2.6 2.4L14 4.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10.4 4.2H14v3.6" stroke-linecap="round" stroke-linejoin="round"/>',
+  health:'<path d="M8 13.6 3 9.1c-1.7-1.6-1.7-4 0-5.5 1.6-1.5 3.9-1.3 5 .3 1.1-1.6 3.4-1.8 5-.3 1.7 1.5 1.7 3.9 0 5.5L8 13.6Z"/>',
+  exceptions:'<path d="M8 2 14.2 13H1.8L8 2Z" stroke-linejoin="round"/><path d="M8 6.6v3M8 11.2h.01" stroke-linecap="round"/>',
+  insights:'<path d="M8 1.6l1 2.7 2.7 1-2.7 1-1 2.7-1-2.7-2.7-1 2.7-1 1-2.7Z"/><path d="M13 9.4l.5 1.4 1.4.5-1.4.5-.5 1.4-.5-1.4-1.4-.5 1.4-.5.5-1.4Z"/>',
+  board:'<rect x="1.8" y="2.4" width="12.4" height="9.4" rx="1"/><path d="M4.4 12.6h7.2M6.2 9.4l1.7-2.3 1.6 1.4 2-2.6" stroke-linecap="round" stroke-linejoin="round"/>'
+};
+function icon(name){ return `<svg class="nav-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35">${ICONS[name]}</svg>`; }
+
+/* ============================== SEED DATA (mirrors the production /src/data/seed.ts) ============================== */
+const HOME_REGION = { id:'rgn-bh-riffa', name:'Riffa – Main Campus', country:'Bahrain' };
+const HOME_OUTLETS = [
+  {id:'out-clubhouse-resto', code:'RGC-F01', name:'Fairway Clubhouse Restaurant', category:'Food & Beverage', city:'Riffa', areaManager:'Layla Haddad', approver:'Omar Fakhro'},
+  {id:'out-19th-hole', code:'RGC-F02', name:'The 19th Hole Sports Bar', category:'Food & Beverage', city:'Riffa', areaManager:'Layla Haddad', approver:'Omar Fakhro'},
+  {id:'out-halfway-house', code:'RGC-F03', name:'Halfway House Kiosk', category:'Food & Beverage', city:'Riffa', areaManager:'Hassan Almeer', approver:'Omar Fakhro'},
+  {id:'out-poolside-grill', code:'RGC-F04', name:'Poolside Grill', category:'Food & Beverage', city:'Riffa', areaManager:'Mariam Al-Sayed', approver:'Omar Fakhro'},
+  {id:'out-banquet', code:'RGC-E01', name:'Banquet & Events Pavilion', category:'Banqueting & Events', city:'Riffa', areaManager:'Yousef Kanoo', approver:'Omar Fakhro'},
+  {id:'out-proshop', code:'RGC-R01', name:'Pro Shop Retail', category:'Retail / Pro Shop', city:'Riffa', areaManager:'Fatima Juma', approver:'Omar Fakhro'},
+  {id:'out-academy', code:'RGC-G01', name:'Golf Academy & Driving Range', category:'Golf Operations', city:'Riffa', areaManager:'Khalid Mattar', approver:'Omar Fakhro'},
+  {id:'out-greenfees', code:'RGC-G02', name:'Championship Course – Green Fees', category:'Golf Operations', city:'Riffa', areaManager:'Khalid Mattar', approver:'Omar Fakhro'},
+  {id:'out-buggy', code:'RGC-G03', name:'Buggy & Equipment Rental', category:'Golf Operations', city:'Riffa', areaManager:'Khalid Mattar', approver:'Omar Fakhro'},
+  {id:'out-spa', code:'RGC-L01', name:'Spa & Wellness Lounge', category:'Leisure & Wellness', city:'Riffa', areaManager:'Mariam Al-Sayed', approver:'Omar Fakhro'},
+  {id:'out-pool', code:'RGC-L02', name:'Swimming Pool & Cabana Bar', category:'Leisure & Wellness', city:'Riffa', areaManager:'Mariam Al-Sayed', approver:'Omar Fakhro'},
+  {id:'out-membership', code:'RGC-M01', name:'Membership & Lifestyle Services', category:'Membership', city:'Riffa', areaManager:'Fatima Juma', approver:'Omar Fakhro'},
+  {id:'out-junior-academy', code:'RGC-G04', name:'Junior Golf Academy', category:'Golf Operations', city:'Riffa', areaManager:'Khalid Mattar', approver:'Omar Fakhro', isNewThisYear:true},
+];
+const NETWORK_REGIONS = [
+  {id:'rgn-bh-manama', name:'Manama District', country:'Bahrain', n:6},
+  {id:'rgn-ae-dubai', name:'Dubai Cluster', country:'UAE', n:11},
+  {id:'rgn-sa-riy', name:'Riyadh Cluster', country:'Saudi Arabia', n:12},
+  {id:'rgn-qa-doh', name:'Doha Cluster', country:'Qatar', n:9},
+  {id:'rgn-kw-kwt', name:'Kuwait Cluster', country:'Kuwait', n:8},
+  {id:'rgn-om-mct', name:'Muscat Cluster', country:'Oman', n:7},
+  {id:'rgn-eg-cai', name:'Cairo Cluster', country:'Egypt', n:10},
+];
+const NETWORK_TEMPLATES = [
+  {name:'Fairway Grill', category:'Food & Beverage'}, {name:'Clubhouse Bistro', category:'Food & Beverage'},
+  {name:'Pro Shop', category:'Retail / Pro Shop'}, {name:'Golf Academy', category:'Golf Operations'},
+  {name:'Course Green Fees', category:'Golf Operations'}, {name:'Events Pavilion', category:'Banqueting & Events'},
+  {name:'Wellness Spa', category:'Leisure & Wellness'}, {name:'Membership Desk', category:'Membership'},
+];
+const MANAGERS = ['Sara Al-Khalifa','Ibrahim Marzooq','Nadia Farouk','Tariq Emerson','Reem Boustani','Ali Hejazi','Dana Qassim'];
+
+/* ============================== PRNG + PERIODS ============================== */
+function mulberry32(seed){ let a=seed; return function(){ a|=0; a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; }
+function hashStr(s){ let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619);} return h>>>0; }
+function listPeriods(count, endYear, endMonth){ const out=[]; let y=endYear,m=endMonth; for(let i=0;i<count;i++){ out.unshift(y+'-'+String(m).padStart(2,'0')); m--; if(m===0){m=12;y--;} } return out; }
+const NOW = new Date();
+// Reassigned from the fetched dataset's own period list once data loads (the
+// live API may return a shorter trailing window than the demo generator's
+// fixed 13 months) — these starting values are just the pre-load default.
+let ALL_PERIODS = listPeriods(13, NOW.getFullYear(), NOW.getMonth()+1);
+let CURRENT_PERIOD = ALL_PERIODS[ALL_PERIODS.length-1];
+function periodShort(p){ const [y,m]=p.split('-'); return new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'short'}); }
+function periodLabel(p){ const [y,m]=p.split('-'); return new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'short',year:'numeric'}); }
+
+/* ============================== OUTLET + REGION BUILD ============================== */
+function buildData(scale){
+  const regions=[HOME_REGION];
+  const outlets = HOME_OUTLETS.map(o=>({...o, regionId:HOME_REGION.id, isClosed:false, isNewThisYear:!!o.isNewThisYear}));
+  if(scale==='network'){
+    for(const r of NETWORK_REGIONS){
+      regions.push({id:r.id,name:r.name,country:r.country});
+      const rnd=mulberry32(hashStr(r.id));
+      for(let i=0;i<r.n;i++){
+        const t=NETWORK_TEMPLATES[i%NETWORK_TEMPLATES.length];
+        const mgr=MANAGERS[Math.floor(rnd()*MANAGERS.length)];
+        outlets.push({
+          id:r.id+'-out-'+(i+1), code:r.id.split('-').pop().toUpperCase()+'-'+String(i+1).padStart(3,'0'),
+          name:r.name.split(' ')[0]+' '+t.name+' #'+(i+1), category:t.category, regionId:r.id, city:r.name,
+          areaManager:mgr, approver:'Regional Finance Director', isClosed:rnd()>0.985, isNewThisYear:rnd()>0.92
+        });
+      }
+    }
+  }
+  return {regions, outlets};
+}
+
+const CATEGORY_REV = {'Food & Beverage':62000,'Retail / Pro Shop':38000,'Golf Operations':95000,'Banqueting & Events':110000,'Leisure & Wellness':34000,'Membership':145000};
+const CATEGORY_COGS = {'Food & Beverage':0.31,'Retail / Pro Shop':0.58,'Golf Operations':0.08,'Banqueting & Events':0.28,'Leisure & Wellness':0.18,'Membership':0.03};
+
+function emptyLine(){ return {foodSales:0,beverageSales:0,deliverySales:0,otherRevenue:0,foodCost:0,beverageCost:0,packagingCost:0,payroll:0,overtime:0,staffBenefits:0,rent:0,utilities:0,marketing:0,repairsMaintenance:0,cleaning:0,security:0,technology:0,otherExpenses:0,depreciation:0,financeCost:0}; }
+function scaleLine(base,f){ const o={}; for(const k in base) o[k]=Math.max(0,Math.round(base[k]*f)); return o; }
+function baseLine(outlet, rnd){
+  const rev = CATEGORY_REV[outlet.category]*(0.75+rnd()*0.6);
+  const cogsRatio = CATEGORY_COGS[outlet.category];
+  const foodShare = outlet.category==='Food & Beverage'?0.62:outlet.category==='Leisure & Wellness'?0.15:0.05;
+  const bevShare = outlet.category==='Food & Beverage'?0.28:0.03;
+  const delShare = outlet.category==='Food & Beverage'?0.06:0;
+  const otherShare = 1-foodShare-bevShare-delShare;
+  const cogs = rev*cogsRatio;
+  const payroll = rev*(0.18+rnd()*0.08);
+  return {
+    foodSales:rev*foodShare, beverageSales:rev*bevShare, deliverySales:rev*delShare, otherRevenue:rev*otherShare,
+    foodCost:cogs*0.62, beverageCost:cogs*0.28, packagingCost:cogs*0.1,
+    payroll, overtime:payroll*(0.05+rnd()*0.05), staffBenefits:payroll*0.12,
+    rent:rev*(0.05+rnd()*0.04), utilities:rev*(0.025+rnd()*0.015), marketing:rev*(0.015+rnd()*0.01),
+    repairsMaintenance:rev*(0.01+rnd()*0.01), cleaning:rev*0.008, security:rev*0.006, technology:rev*0.007,
+    otherExpenses:rev*(0.01+rnd()*0.01), depreciation:rev*0.035, financeCost:rev*0.008
+  };
+}
+const STATUS_POOL=[['Approved',62],['Submitted',12],['In Review',8],['Pending',8],['Rejected',4],['Missing',6]];
+function pickStatus(rnd,isCurrent){
+  if(!isCurrent) return rnd()>0.02?'Approved':'Submitted';
+  const total=STATUS_POOL.reduce((s,x)=>s+x[1],0); let r=rnd()*total;
+  for(const [status,w] of STATUS_POOL){ if(r<w) return status; r-=w; } return 'Approved';
+}
+function generateHistory(outlets){
+  const records=[];
+  for(const outlet of outlets){
+    const rnd=mulberry32(hashStr(outlet.id));
+    for(let pIdx=0; pIdx<ALL_PERIODS.length; pIdx++){
+      const period=ALL_PERIODS[pIdx]; const isCurrent = pIdx===ALL_PERIODS.length-1;
+      const base=baseLine(outlet,rnd);
+      const trend=1+pIdx*0.004; const month=Number(period.split('-')[1]);
+      const seasonal=1+Math.sin((month/12)*Math.PI*2)*0.06; const noise=0.93+rnd()*0.14;
+      const actualFactor = trend*seasonal*noise*(outlet.isClosed && isCurrent?0.15:1);
+      const actual=scaleLine(base,actualFactor);
+      const budget=scaleLine(base, trend*seasonal*(0.98+rnd()*0.04));
+      const forecast=scaleLine(base, actualFactor*(0.99+rnd()*0.05));
+      const priorYear=scaleLine(base, actualFactor/(1.02+rnd()*0.08));
+      const reportingStatus=pickStatus(rnd,isCurrent);
+      const daysDelayed = reportingStatus==='Missing'? 8+Math.floor(rnd()*20) : reportingStatus==='Pending'? 2+Math.floor(rnd()*6) : reportingStatus==='In Review'? Math.floor(rnd()*3) : 0;
+      const dataQualityFlags=[];
+      if(rnd()>0.94) dataQualityFlags.push('Revenue variance vs POS export exceeds 3%');
+      if(rnd()>0.97) dataQualityFlags.push('Duplicate journal entry suspected');
+      records.push({ outletId:outlet.id, period, actual, budget, forecast, priorYear, reportingStatus, daysDelayed,
+        submittedOn: reportingStatus==='Missing'? null : period+'-'+String(3+Math.floor(rnd()*20)).padStart(2,'0'),
+        dataQualityFlags });
+    }
+  }
+  return records;
+}
+
+/* ============================== KPI MATH (mirrors /src/lib/calculations.ts) ============================== */
+function sumLines(lines){ const o=emptyLine(); for(const l of lines) for(const k in o) o[k]+=l[k]; return o; }
+function revenueOf(l){ return l.foodSales+l.beverageSales+l.deliverySales+l.otherRevenue; }
+function cogsOf(l){ return l.foodCost+l.beverageCost+l.packagingCost; }
+function payrollOf(l){ return l.payroll+l.overtime+l.staffBenefits; }
+function occupancyOf(l){ return l.rent+l.utilities; }
+function opexOf(l){ return l.payroll+l.overtime+l.staffBenefits+l.rent+l.utilities+l.marketing+l.repairsMaintenance+l.cleaning+l.security+l.technology+l.otherExpenses; }
+function ebitdaOf(l){ return revenueOf(l)-cogsOf(l)-opexOf(l); }
+function opOf(l){ return ebitdaOf(l)-l.depreciation; }
+function netOf(l){ return opOf(l)-l.financeCost; }
+function pct(actual,base){ if(base===0) return actual===0?0:1; return (actual-base)/Math.abs(base); }
+function totalsOf(l){
+  const revenue=revenueOf(l), cos=cogsOf(l), gp=revenue-cos, opex=opexOf(l), ebitda=ebitdaOf(l), op=opOf(l), net=netOf(l);
+  const safeRev = revenue===0?1:revenue;
+  return { revenue, cos, gp, gpPct:gp/safeRev, opex, ebitda, ebitdaPct:ebitda/safeRev, op, net, netPct:net/safeRev,
+    laborPct:payrollOf(l)/safeRev, foodPct:l.foodCost/safeRev, occPct:occupancyOf(l)/safeRev, cash:ebitda-l.financeCost };
+}
+function fmtCur(v){ return new Intl.NumberFormat('en-BH',{style:'currency',currency:'BHD',maximumFractionDigits:0}).format(v); }
+function fmtCurCompact(v){ return new Intl.NumberFormat('en-BH',{style:'currency',currency:'BHD',notation:'compact',maximumFractionDigits:1}).format(v); }
+function fmtPct(v){ return new Intl.NumberFormat('en-BH',{style:'percent',minimumFractionDigits:1,maximumFractionDigits:1}).format(v); }
+function fmtSignedPct(v){ return (v>0?'+':'')+fmtPct(v); }
+function fmtNum(v){ return new Intl.NumberFormat('en-BH').format(Math.round(v)); }
+function fmtDate(iso){ if(!iso) return '—'; return new Date(iso).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
+
+/* ============================== HEALTH SCORE ============================== */
+function clamp(v){ return Math.max(0,Math.min(100,v)); }
+function healthScore(rec){
+  const a=totalsOf(rec.actual), py=totalsOf(rec.priorYear);
+  const salesGrowth=clamp(50+pct(a.revenue,py.revenue)*250);
+  const profitability=clamp(a.ebitdaPct*400+20);
+  const costControl=clamp(100-Math.max(0,a.opex/Math.max(a.revenue,1)-0.35)*300);
+  const compliance=clamp(rec.reportingStatus==='Approved'?100: (rec.reportingStatus==='Submitted'||rec.reportingStatus==='In Review')?85-rec.daysDelayed*4: rec.reportingStatus==='Rejected'?55:10);
+  const laborEff=clamp(100-Math.abs(0.1)*10); // simplified (labor hours not tracked in preview build)
+  const invEff=clamp(92);
+  const comps=[['Sales Growth',salesGrowth,.2],['Profitability',profitability,.25],['Cost Control',costControl,.2],['Reporting Compliance',compliance,.15],['Labor Efficiency',laborEff,.12],['Inventory Efficiency',invEff,.08]];
+  const score=Math.round(comps.reduce((s,c)=>s+c[1]*c[2],0));
+  const tier= score>=90?'Excellent': score>=80?'Good': score>=70?'Fair':'Action Required';
+  return {score, tier, comps};
+}
+
+/* ============================== EXCEPTIONS + INSIGHTS ============================== */
+function detectExceptions(records, outletById){
+  const items=[];
+  for(const r of records){
+    const outlet=outletById[r.outletId]; if(!outlet) continue;
+    // Revenue/cost checks compare the full-month FORECAST (= actual once a month is
+    // closed, or a run-rate projection while it's still in progress) against budget,
+    // so a still-open month isn't flagged just for not yet reaching a full-month plan.
+    const a=totalsOf(r.actual), b=totalsOf(r.budget), f=totalsOf(r.forecast||r.actual);
+    const revVar=pct(f.revenue,b.revenue); const marginDelta=a.gpPct-b.gpPct; const opexVar=pct(opexOf(r.forecast||r.actual),opexOf(r.budget));
+    const eb=ebitdaOf(r.actual); const cash=eb-r.actual.financeCost;
+    if(revVar<=-0.1) items.push({type:'Revenue Drop', outlet, severity:revVar<=-0.2?'Critical':'High', impact:f.revenue-b.revenue, desc:`Projected revenue at ${outlet.name} is ${(revVar*100).toFixed(1)}% below budget.`, owner:outlet.areaManager});
+    if(marginDelta<=-0.05) items.push({type:'Margin Decline', outlet, severity:marginDelta<=-0.1?'Critical':'Medium', impact:marginDelta*a.revenue, desc:`Gross margin at ${outlet.name} is ${(Math.abs(marginDelta)*100).toFixed(1)} pts below budget.`, owner:outlet.approver});
+    if(r.reportingStatus==='Missing') items.push({type:'Missing Report', outlet, severity:'High', impact:0, desc:`${outlet.name} has not submitted the monthly P&L.`, owner:outlet.areaManager});
+    else if(r.daysDelayed>=5) items.push({type:'Late Submission', outlet, severity:r.daysDelayed>=10?'High':'Medium', impact:0, desc:`${outlet.name} submitted ${r.daysDelayed} days late.`, owner:outlet.areaManager});
+    if(opexVar>=0.1) items.push({type:'Cost Overrun', outlet, severity:opexVar>=0.2?'Critical':'Medium', impact:opexOf(r.forecast||r.actual)-opexOf(r.budget), desc:`Projected opex at ${outlet.name} is ${(opexVar*100).toFixed(1)}% over budget.`, owner:outlet.approver});
+    if(r.dataQualityFlags.length) items.push({type:'Unusual Transaction', outlet, severity:'Medium', impact:0, desc:`${outlet.name}: ${r.dataQualityFlags[0]}`, owner:outlet.approver});
+    if(eb<0) items.push({type:'Negative EBITDA', outlet, severity:'Critical', impact:eb, desc:`${outlet.name} reported negative EBITDA this period.`, owner:outlet.approver});
+    if(cash<0) items.push({type:'Negative Cash Flow', outlet, severity:'Critical', impact:cash, desc:`${outlet.name} is cash-flow negative after finance costs.`, owner:outlet.approver});
+  }
+  const rank={Critical:0,High:1,Medium:2,Low:3};
+  return items.sort((x,y)=>rank[x.severity]-rank[y.severity]||x.impact-y.impact);
+}
+function generateInsights(records, outletById){
+  const out=[]; const withO=records.map(r=>({r,outlet:outletById[r.outletId]})).filter(x=>x.outlet);
+  if(!withO.length) return out;
+  const byVar=[...withO].sort((a,b)=>pct(revenueOf(b.r.actual),revenueOf(b.r.budget))-pct(revenueOf(a.r.actual),revenueOf(a.r.budget)));
+  const best=byVar[0], worst=byVar[byVar.length-1];
+  if(best){ const v=pct(revenueOf(best.r.actual),revenueOf(best.r.budget)); if(v>0.1) out.push({theme:'Performance',tone:'positive',text:`Outlet ${best.outlet.code} (${best.outlet.name}) exceeded budget by ${(v*100).toFixed(0)}%, driven by strong ${best.outlet.category.toLowerCase()} demand.`}); }
+  if(worst){ const v=pct(revenueOf(worst.r.actual),revenueOf(worst.r.budget)); if(v<-0.1) out.push({theme:'Risk',tone:'negative',text:`${worst.outlet.name} is trailing budget by ${(Math.abs(v)*100).toFixed(0)}%, the largest shortfall in the current scope.`}); }
+  const cats=[...new Set(withO.map(x=>x.outlet.category))];
+  for(const c of cats){ const g=withO.filter(x=>x.outlet.category===c); const af=g.reduce((s,x)=>s+x.r.actual.foodCost,0), bf=g.reduce((s,x)=>s+x.r.budget.foodCost,0); const v=pct(af,bf); if(v>0.08) out.push({theme:'Cost',tone:'negative',text:`Food costs increased ${(v*100).toFixed(1)}% vs budget in ${c}, consistent with supplier price movements.`}); }
+  const missing=withO.filter(x=>x.r.reportingStatus==='Missing'); if(missing.length) out.push({theme:'Compliance',tone:'negative',text:`${missing.length} outlet${missing.length===1?'':'s'} remain outstanding for monthly reporting as of this period.`});
+  const withDelta=withO.map(x=>({...x,delta:ebitdaOf(x.r.actual)-ebitdaOf(x.r.priorYear)}));
+  const totalDecline=withDelta.filter(x=>x.delta<0).reduce((s,x)=>s+x.delta,0);
+  const bottom5=[...withDelta].sort((a,b)=>a.delta-b.delta).slice(0,5);
+  const bottom5Decline=bottom5.reduce((s,x)=>s+Math.min(0,x.delta),0);
+  if(totalDecline<0){ const share=Math.min(1,bottom5Decline/totalDecline); out.push({theme:'Risk',tone:'negative',text:`The five weakest outlets contributed ${(share*100).toFixed(0)}% of the total EBITDA decline vs prior year.`}); }
+  const growth=withO.map(x=>({...x,g:pct(revenueOf(x.r.actual),revenueOf(x.r.priorYear))})).sort((a,b)=>b.g-a.g);
+  if(growth[0] && growth[0].g>0.15) out.push({theme:'Growth',tone:'positive',text:`${growth[0].outlet.name} posted ${(growth[0].g*100).toFixed(0)}% YoY revenue growth, the fastest in the current scope.`});
+  return out;
+}
+
+/* ============================== STATE ============================== */
+const state = { tab:'overview', period: CURRENT_PERIOD, regionId:'all', category:'all', scale:'realistic', selectedOutlet:null };
+let DATA = null;
+
+function normalizeLiveOutlet(o){
+  // Odoo doesn't expose an area-manager / approver assignment per outlet yet,
+  // so these are left unset rather than filled with invented names. IDs are
+  // stringified so they compare consistently with DOM dataset values.
+  return { ...o, id:String(o.id), regionId:String(o.regionId), areaManager:'—', approver:'—', isClosed:false, isNewThisYear:false };
+}
+function normalizeLiveRecord(r){
+  return { ...r, outletId:String(r.outletId), daysDelayed:0, submittedOn:null, dataQualityFlags:[] };
+}
+async function fetchLiveData(){
+  const res = await fetch('/api/pnl');
+  const json = await res.json();
+  if(json.error) throw new Error(json.error);
+  return {
+    regions: json.regions,
+    outlets: json.outlets.map(normalizeLiveOutlet),
+    records: json.records.map(normalizeLiveRecord),
+    generatedAt: json.generatedAt,
+    notes: json.notes || [],
+    source: json.source || 'odoo-live',
+  };
+}
+function loadingBanner(msg){
+  return `<div class="card card-pad" style="text-align:center; color:var(--muted);">${msg}</div>`;
+}
+async function loadData(){
+  if(state.scale === 'network'){
+    const {regions,outlets}=buildData('network');
+    const records=generateHistory(outlets);
+    DATA={regions,outlets,records, periods:ALL_PERIODS.slice(), generatedAt:new Date().toISOString(),
+      notes:['Synthetic "Network Scale Demo" data — generated in the browser, not connected to Odoo.'],
+      source:'synthetic'};
+    applyPeriodsFromData();
+    return;
+  }
+  document.getElementById('content').innerHTML = loadingBanner('Loading live outlet P&amp;L from Odoo — first load can take up to a minute while the server builds its cache…');
+  try {
+    DATA = await fetchLiveData();
+    applyPeriodsFromData();
+  } catch (err) {
+    document.getElementById('content').innerHTML = loadingBanner('Could not load live Odoo data: ' + err.message + '. Is the backend running and reachable?');
+    throw err;
+  }
+}
+function applyPeriodsFromData(){
+  if(!DATA || !DATA.periods || !DATA.periods.length) return;
+  ALL_PERIODS = DATA.periods;
+  CURRENT_PERIOD = ALL_PERIODS[ALL_PERIODS.length-1];
+  if(!ALL_PERIODS.includes(state.period)) state.period = CURRENT_PERIOD;
+}
+
+function filteredOutlets(){
+  if(!DATA) return [];
+  return DATA.outlets.filter(o=>{
+    if(state.regionId!=='all' && o.regionId!==state.regionId) return false;
+    if(state.category!=='all' && o.category!==state.category) return false;
+    return true;
+  });
+}
+function recordsFor(period, outlets){
+  if(!DATA) return [];
+  const ids=new Set((outlets||filteredOutlets()).map(o=>o.id));
+  return DATA.records.filter(r=>ids.has(r.outletId) && (!period || r.period===period));
+}
+
+/* ============================== TINY SVG CHART HELPERS ============================== */
+function svgOpen(w,h,vb){ return `<svg viewBox="0 0 ${vb?vb[0]:w} ${vb?vb[1]:h}" width="100%" height="${h}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">`; }
+function sparkline(values, w=140,h=34,positive=true){
+  if(values.length<2) return `<svg width="${w}" height="${h}"></svg>`;
+  const min=Math.min(...values), max=Math.max(...values); const range=(max-min)||1;
+  const pts=values.map((v,i)=>[ (i/(values.length-1))*w, h-((v-min)/range)*h*0.88-3 ]);
+  const line=pts.map(p=>p.join(',')).join(' ');
+  const area=`0,${h} `+line+` ${w},${h}`;
+  const color= positive?COLOR.fairway:COLOR.clay;
+  const id='sg'+Math.round(min)+Math.round(max)+values.length;
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+    <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity="0.32"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+    <polygon points="${area}" fill="url(#${id})"/>
+    <polyline points="${line}" fill="none" stroke="${color}" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round"/>
+  </svg>`;
+}
+function barChart(rows, w=560,h=230,fmt=fmtCurCompact){
+  const max=Math.max(1,...rows.map(r=>r.value));
+  const padL=6, padB=42, padT=10, barGap=10;
+  const innerW=w-padL*2, innerH=h-padB-padT;
+  const bw=Math.max(10,(innerW/rows.length)-barGap);
+  let bars='', labels='';
+  rows.forEach((r,i)=>{
+    const x=padL+i*(bw+barGap);
+    const bh=(r.value/max)*innerH;
+    const y=padT+(innerH-bh);
+    bars+=`<rect x="${x}" y="${y}" width="${bw}" height="${Math.max(1,bh)}" rx="4" fill="${r.color||COLOR.navy}"/>`;
+    bars+=`<text x="${x+bw/2}" y="${y-5}" font-size="9.5" text-anchor="middle" fill="var(--muted)" font-family="IBM Plex Mono, monospace">${fmt(r.value)}</text>`;
+    labels+=`<text x="${x+bw/2}" y="${h-14}" font-size="9.5" text-anchor="middle" fill="var(--muted)">${r.label.length>12? r.label.slice(0,11)+'…':r.label}</text>`;
+  });
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}">
+    <line x1="${padL}" y1="${padT+innerH}" x2="${w-padL}" y2="${padT+innerH}" stroke="var(--line)"/>
+    ${bars}${labels}
+  </svg>`;
+}
+function waterfall(steps, w=620, h=250){
+  let cumulative=0; const rows=[];
+  for(const s of steps){
+    if(s.isTotal){ rows.push({label:s.label, from:0, to:s.value, isTotal:true, disp:s.value}); cumulative=s.value; }
+    else { const from=cumulative; cumulative+=s.value; rows.push({label:s.label, from:Math.min(from,cumulative), to:Math.max(from,cumulative), isTotal:false, disp:s.value}); }
+  }
+  const allVals=rows.flatMap(r=>[r.from,r.to]);
+  const max=Math.max(...allVals), min=Math.min(0,...allVals);
+  const range=(max-min)||1;
+  const padL=8,padB=46,padT=16; const innerW=w-padL*2, innerH=h-padB-padT;
+  const bw=Math.max(14,(innerW/rows.length)-14);
+  const yOf=v=>padT+innerH-((v-min)/range)*innerH;
+  let bars='', labels='';
+  rows.forEach((r,i)=>{
+    const x=padL+i*(innerW/rows.length)+((innerW/rows.length)-bw)/2;
+    const y1=yOf(r.to), y2=yOf(r.from);
+    const top=Math.min(y1,y2), hgt=Math.max(2,Math.abs(y2-y1));
+    const color = r.isTotal? COLOR.navy : (r.disp>=0? COLOR.fairway: COLOR.clay);
+    bars+=`<rect x="${x}" y="${top}" width="${bw}" height="${hgt}" rx="3" fill="${color}"/>`;
+    bars+=`<text x="${x+bw/2}" y="${top-5}" font-size="9.5" text-anchor="middle" fill="var(--muted)" font-family="IBM Plex Mono, monospace">${fmtCurCompact(r.disp)}</text>`;
+    labels+=`<text x="${x+bw/2}" y="${h-30}" font-size="9.5" text-anchor="middle" fill="var(--muted)">${r.label}</text>`;
+  });
+  const zeroY=yOf(0);
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}">
+    <line x1="${padL}" y1="${zeroY}" x2="${w-padL}" y2="${zeroY}" stroke="var(--line)"/>
+    ${bars}${labels}
+  </svg>`;
+}
+function gauge(value){
+  const pct100=Math.round(value*100);
+  const color = value>=0.9?COLOR.fairway: value>=0.75?COLOR.amber: COLOR.clay;
+  const r=64, cx=90, cy=90; const circumference=Math.PI*r;
+  const dash=(pct100/100)*circumference;
+  return `<svg viewBox="0 0 180 110" width="220" height="132">
+    <path d="M ${cx-r} ${cy} A ${r} ${r} 0 0 1 ${cx+r} ${cy}" fill="none" stroke="var(--surface-2)" stroke-width="14" stroke-linecap="round"/>
+    <path d="M ${cx-r} ${cy} A ${r} ${r} 0 0 1 ${cx+r} ${cy}" fill="none" stroke="${color}" stroke-width="14" stroke-linecap="round"
+      stroke-dasharray="${dash} ${circumference}"/>
+    <text x="${cx}" y="${cy-6}" text-anchor="middle" font-size="24" font-weight="700" fill="var(--ink)" font-family="IBM Plex Mono, monospace">${pct100}%</text>
+    <text x="${cx}" y="${cy+14}" text-anchor="middle" font-size="10" fill="var(--muted)">Reporting complete</text>
+  </svg>`;
+}
+function lineChart(series, w=640, h=250){
+  // series: [{name,color,dash,points:[{x:label,y:value}]}]
+  const allY = series.flatMap(s=>s.points.map(p=>p.y));
+  const max=Math.max(...allY), min=Math.min(0,...allY); const range=(max-min)||1;
+  const padL=8,padB=28,padT=14; const innerW=w-padL*2, innerH=h-padB-padT;
+  const n=series[0].points.length;
+  const xOf=i=> padL + (i/(n-1))*innerW;
+  const yOf=v=> padT + innerH - ((v-min)/range)*innerH;
+  let lines='';
+  for(const s of series){
+    const pts=s.points.map((p,i)=>`${xOf(i)},${yOf(p.y)}`).join(' ');
+    lines+=`<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2" ${s.dash?`stroke-dasharray="${s.dash}"`:''} stroke-linejoin="round" stroke-linecap="round"/>`;
+  }
+  let labels=''; series[0].points.forEach((p,i)=>{ if(i%2===0) labels+=`<text x="${xOf(i)}" y="${h-8}" font-size="9" text-anchor="middle" fill="var(--muted)">${p.x}</text>`; });
+  let legend=''; series.forEach((s,i)=>{ legend+=`<span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;font-size:10.5px;color:var(--muted)"><span style="width:9px;height:9px;border-radius:2px;background:${s.color};display:inline-block"></span>${s.name}</span>`; });
+  return `<div>${legend}<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}">
+    <line x1="${padL}" y1="${padT+innerH}" x2="${w-padL}" y2="${padT+innerH}" stroke="var(--line)"/>
+    ${lines}${labels}
+  </svg></div>`;
+}
+function heatCellColor(status){
+  return status==='Approved'? COLOR.fairway : status==='Submitted'? '#5FAE85' : status==='In Review'? COLOR.gold : status==='Pending'? COLOR.amber : COLOR.clay;
+}
+
+/* ============================== NAV ============================== */
+const NAV = [
+  ['overview','Executive Overview','Group KPIs & trends','overview'],
+  ['tower','Reporting Control Tower','Completeness & compliance','tower'],
+  ['pnl','Outlet P&L','Full statement by outlet','pnl'],
+  ['ranking','Performance Ranking','Top & bottom outlets','rank'],
+  ['regional','Regional Performance','Region / country / city','regional'],
+  ['budget','Budget vs Actual','Variance analysis','budget'],
+  ['lfl','Like-for-Like Sales','Same-store growth','lfl'],
+  ['health','Outlet Health Score','0–100 composite score','health'],
+  ['exceptions','Exception Management','Automated risk flags','exceptions'],
+  ['insights','AI Finance Insights','Automated commentary','insights'],
+  ['board','Monthly Board Pack','Executive narrative','board'],
+];
+function renderNav(){
+  const missing = recordsFor(state.period).filter(r=>r.reportingStatus==='Missing').length;
+  document.getElementById('nav').innerHTML = NAV.map(([id,label,desc,ic])=>`
+    <button class="nav-btn ${state.tab===id?'active':''}" data-nav="${id}">
+      ${icon(ic)}<span>${label}</span>
+      ${id==='tower' && missing>0 ? `<span class="nav-badge">${missing}</span>`:''}
+    </button>`).join('');
+}
+
+/* ============================== FILTER BAR ============================== */
+function renderFilters(){
+  const fPeriod=document.getElementById('fPeriod');
+  fPeriod.innerHTML = ALL_PERIODS.map(p=>`<option value="${p}" ${p===state.period?'selected':''}>${periodLabel(p)}</option>`).join('');
+  const fRegion=document.getElementById('fRegion');
+  const regions = DATA ? DATA.regions : [];
+  const regionOutlets = DATA ? DATA.outlets : [];
+  fRegion.innerHTML = `<option value="all">All Regions</option>` + regions.map(r=>`<option value="${r.id}" ${r.id===state.regionId?'selected':''}>${r.name}</option>`).join('');
+  const cats=[...new Set(regionOutlets.map(o=>o.category))].sort();
+  const fCategory=document.getElementById('fCategory');
+  fCategory.innerHTML = `<option value="all">All Profit Centers</option>` + cats.map(c=>`<option value="${c}" ${c===state.category?'selected':''}>${c}</option>`).join('');
+  document.querySelectorAll('#fScale button').forEach(b=>b.classList.toggle('on', b.dataset.scale===state.scale));
+}
+
+/* ============================== PAGE: OVERVIEW ============================== */
+function kpiCard(label, actual, budget, forecast, py, history, isPct, invert){
+  // Compares the full-month forecast (actual once closed, run-rate projection
+  // while still open) to budget, so an in-progress month isn't flagged just
+  // for not yet reaching the full-month plan.
+  const v = pct(forecast,budget);
+  const good = invert? v<=0 : v>=0;
+  const trendClass = Math.abs(v)<0.001? 'flat' : (good?'up':'down');
+  const arrow = Math.abs(v)<0.001? '→' : (v>=0?'↗':'↘');
+  const fmt = isPct? fmtPct : fmtCurCompact;
+  const histPositive = history.length>1 ? (invert? history[history.length-1] <= history[0] : history[history.length-1] >= history[0]) : true;
+  return `<div class="card card-pad">
+    <div class="kpi-top"><span class="kpi-label">${label}</span><span class="trend ${trendClass}">${arrow} ${fmtSignedPct(v)}</span></div>
+    <div class="kpi-actual num">${fmt(actual)}</div>
+    <div class="kpi-sub">
+      <div><span style="color:var(--muted)">Budget</span><b class="num">${fmt(budget)}</b></div>
+      <div><span style="color:var(--muted)">Forecast</span><b class="num">${fmt(forecast)}</b></div>
+      <div><span style="color:var(--muted)">Prior Year</span><b class="num">${fmt(py)}</b></div>
+    </div>
+    ${sparkline(history,140,32,histPositive)}
+  </div>`;
+}
+function renderOverview(){
+  const outlets=filteredOutlets();
+  const series = ALL_PERIODS.map(period=>{
+    const recs = recordsFor(period, outlets);
+    return { period,
+      a: totalsOf(sumLines(recs.map(r=>r.actual))), b: totalsOf(sumLines(recs.map(r=>r.budget))),
+      f: totalsOf(sumLines(recs.map(r=>r.forecast))), py: totalsOf(sumLines(recs.map(r=>r.priorYear))) };
+  });
+  const idx = series.findIndex(s=>s.period===state.period);
+  const cur = series[idx]||series[series.length-1];
+  const hist = key => series.slice(0, idx+1>0?idx+1:series.length).map(s=>s.a[key]);
+
+  const curRecs = recordsFor(state.period, outlets);
+  const missing = curRecs.filter(r=>r.reportingStatus==='Missing').length;
+  const completion = curRecs.length? (curRecs.length-missing)/curRecs.length : 1;
+  const active = outlets.filter(o=>!o.isClosed).length;
+  const closed = outlets.filter(o=>o.isClosed).length;
+
+  document.getElementById('content').innerHTML = `
+    <div class="grid g-6" style="margin-bottom:16px;">
+      ${statTile('Total Outlets', fmtNum(outlets.length))}
+      ${statTile('Active Outlets', fmtNum(active), 'var(--fairway)')}
+      ${statTile('Closed Outlets', fmtNum(closed), 'var(--muted)')}
+      ${statTile('Missing Reports', fmtNum(missing), missing>0?'var(--clay)':'var(--fairway)')}
+      ${statTile('Reporting Completion', fmtPct(completion), completion>0.9?'var(--fairway)':'var(--amber)')}
+      ${statTile('Current Month', periodLabel(state.period), 'var(--navy)')}
+    </div>
+    <div class="section-label" style="border-radius:8px; margin-bottom:12px; display:inline-block;">Executive KPIs</div>
+    <div class="grid g-4">
+      ${kpiCard('Sales Revenue', cur.a.revenue, cur.b.revenue, cur.f.revenue, cur.py.revenue, hist('revenue'), false)}
+      ${kpiCard('Gross Profit', cur.a.gp, cur.b.gp, cur.f.gp, cur.py.gp, hist('gp'), false)}
+      ${kpiCard('Gross Margin %', cur.a.gpPct, cur.b.gpPct, cur.f.gpPct, cur.py.gpPct, hist('gpPct'), true)}
+      ${kpiCard('EBITDA', cur.a.ebitda, cur.b.ebitda, cur.f.ebitda, cur.py.ebitda, hist('ebitda'), false)}
+      ${kpiCard('EBITDA %', cur.a.ebitdaPct, cur.b.ebitdaPct, cur.f.ebitdaPct, cur.py.ebitdaPct, hist('ebitdaPct'), true)}
+      ${kpiCard('Operating Profit', cur.a.op, cur.b.op, cur.f.op, cur.py.op, hist('op'), false)}
+      ${kpiCard('Net Profit', cur.a.net, cur.b.net, cur.f.net, cur.py.net, hist('net'), false)}
+      ${kpiCard('Cash Contribution', cur.a.cash, cur.b.cash, cur.f.cash, cur.py.cash, hist('cash'), false)}
+      ${kpiCard('Labor Cost %', cur.a.laborPct, cur.b.laborPct, cur.f.laborPct, cur.py.laborPct, hist('laborPct'), true, true)}
+      ${kpiCard('Food Cost %', cur.a.foodPct, cur.b.foodPct, cur.f.foodPct, cur.py.foodPct, hist('foodPct'), true, true)}
+      ${kpiCard('Occupancy Cost %', cur.a.occPct, cur.b.occPct, cur.f.occPct, cur.py.occPct, hist('occPct'), true, true)}
+    </div>`;
+}
+function statTile(label, value, color){
+  return `<div class="card card-pad"><div class="stat-label">${label}</div><div class="stat-value num" style="${color?`color:${color}`:''}">${value}</div></div>`;
+}
+
+/* ============================== PAGE: CONTROL TOWER ============================== */
+function renderTower(){
+  const outlets=filteredOutlets();
+  const recs = recordsFor(state.period, outlets);
+  const outletById = Object.fromEntries(outlets.map(o=>[o.id,o]));
+  const counts={Submitted:0,Pending:0,'In Review':0,Approved:0,Rejected:0,Missing:0};
+  recs.forEach(r=>counts[r.reportingStatus]++);
+  const total = recs.length||1;
+  const completion = (total-counts.Missing)/total;
+
+  const alerts=[];
+  if(counts.Missing>0) alerts.push(['critical',`${counts.Missing} outlet${counts.Missing===1?'':'s'} ${counts.Missing===1?'has':'have'} not submitted the monthly P&L for this period.`]);
+  const dq = recs.filter(r=>r.dataQualityFlags.length>0).length;
+  if(dq>0) alerts.push(['warning',`${dq} outlet${dq===1?'':'s'} flagged with material data inconsistencies pending review.`]);
+  if(counts.Rejected>0) alerts.push(['warning',`${counts.Rejected} submission${counts.Rejected===1?'':'s'} rejected by the approver and awaiting resubmission.`]);
+  const esc = recs.filter(r=>r.reportingStatus==='Missing'||r.daysDelayed>=5);
+  const delayedOnly = recs.filter(r=>r.reportingStatus!=='Missing' && r.daysDelayed>=5);
+  if(delayedOnly.length>0) alerts.push(['critical',`${delayedOnly.length} outlet${delayedOnly.length===1?'':'s'} escalated for submissions delayed 5+ days.`]);
+  if(alerts.length===0) alerts.push(['info','All outlets are reporting on time for the selected period.']);
+
+  const trackerRows = [...recs].sort((a,b)=> (a.reportingStatus==='Missing'?0:1) - (b.reportingStatus==='Missing'?0:1) || b.daysDelayed-a.daysDelayed).slice(0,60);
+  const heatOutlets = outlets.slice(0,45);
+  const last6 = ALL_PERIODS.slice(-6);
+  const byOP = {}; DATA.records.forEach(r=>{ byOP[r.outletId+'::'+r.period]=r; });
+
+  document.getElementById('content').innerHTML = `
+    <div class="grid" style="gap:8px; margin-bottom:16px;">
+      ${alerts.map(([lvl,msg])=>`<div class="alert alert-${lvl}">${lvl==='info'?'✓':'⚠'} ${msg}</div>`).join('')}
+    </div>
+    <div class="grid g-3" style="margin-bottom:16px;">
+      <div class="card card-pad" style="text-align:center;">
+        <div class="card-title" style="text-align:left;">Reporting Completion</div>
+        <div class="card-desc" style="text-align:left; margin-bottom:8px;">Share of outlets with a submitted P&L this period</div>
+        ${gauge(completion)}
+        <div class="grid g-3" style="margin-top:8px; text-align:center;">
+          ${Object.entries(counts).map(([s,c])=>`<div style="border:1px solid var(--line); border-radius:7px; padding:6px 4px;"><div class="num" style="font-weight:800;">${c}</div><div style="font-size:9.5px; color:var(--muted);">${s}</div></div>`).join('')}
+        </div>
+      </div>
+      <div class="card card-pad" style="grid-column:span 2;">
+        <div class="card-title">Outlet Submission Heatmap</div>
+        <div class="card-desc" style="margin-bottom:10px;">Last 6 months, reporting status by outlet</div>
+        <div style="max-height:280px; overflow-y:auto;">
+          ${heatOutlets.map(o=>`
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <div style="width:150px; flex-shrink:0; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${o.name}</div>
+              <div>${last6.map(p=>{ const r=byOP[o.id+'::'+p]; const s=r?r.reportingStatus:'Missing'; return `<span class="heatcell" title="${o.name} · ${periodShort(p)} · ${s}" style="background:${heatCellColor(s)}"></span>`; }).join('')}</div>
+            </div>`).join('')}
+        </div>
+        ${outlets.length>heatOutlets.length?`<div style="font-size:10.5px;color:var(--muted); margin-top:6px;">Showing ${heatOutlets.length} of ${outlets.length} outlets — narrow with filters to see more.</div>`:''}
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-head"><div class="card-title">Outlet Reporting Tracker</div><div class="card-desc">${trackerRows.length} outlet(s) for ${periodLabel(state.period)}</div></div>
+      <div class="card-pad tbl-wrap">
+        <table><thead><tr><th>Outlet</th><th>Region</th><th>Area Manager</th><th>Submission Date</th><th>Approver</th><th>Status</th><th class="r">Days Delayed</th></tr></thead>
+        <tbody>${trackerRows.map(r=>{ const o=outletById[r.outletId]; return `<tr style="${r.reportingStatus==='Missing'?'background:var(--clay-soft)':r.daysDelayed>0?'background:var(--amber-soft)':''}">
+          <td style="font-weight:700;">${o.name}</td><td>${o.city}</td><td>${o.areaManager}</td><td class="num">${fmtDate(r.submittedOn)}</td><td>${o.approver}</td>
+          <td>${statusBadge(r.reportingStatus)}</td><td class="num r">${r.daysDelayed>0?r.daysDelayed:'—'}</td></tr>`; }).join('')}</tbody></table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Escalation Dashboard</div><div class="card-desc">Outlets missing or delayed 5+ days</div></div>
+      <div class="card-pad">
+        ${esc.length===0? '<p style="color:var(--muted); font-size:12.5px;">No active escalations for the selected period.</p>' :
+          esc.slice(0,12).map(r=>{ const o=outletById[r.outletId]; return `<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; border:1px solid var(--clay); background:var(--clay-soft); border-radius:8px; padding:8px 12px; margin-bottom:6px; font-size:12px;">
+            <div><b>${o.name}</b><div style="font-size:10.5px; color:var(--muted);">${o.city} · ${o.areaManager} · Escalated to ${o.approver}</div></div>
+            <div style="display:flex; align-items:center; gap:8px;">${statusBadge(r.reportingStatus)}<span class="num" style="color:var(--clay); font-weight:700;">${r.daysDelayed}d</span></div>
+          </div>`; }).join('')}
+      </div>
+    </div>`;
+}
+function statusBadge(s){
+  const cls = (s==='Approved'||s==='Submitted')?'b-success': (s==='Missing'||s==='Rejected')?'b-danger':'b-warning';
+  return `<span class="badge ${cls}">${s}</span>`;
+}
+
+/* ============================== PAGE: OUTLET P&L ============================== */
+function pnlRows(actual,budget,py){
+  const rows=[]; const push=(label,fn,indent=true)=>rows.push({label,a:fn(actual),b:fn(budget),py:fn(py),indent,kind:'line'});
+  rows.push({label:'Revenue',kind:'section'});
+  push('Food Sales',l=>l.foodSales); push('Beverage Sales',l=>l.beverageSales); push('Delivery Sales',l=>l.deliverySales); push('Other Revenue',l=>l.otherRevenue);
+  rows.push({label:'Total Revenue', a:revenueOf(actual), b:revenueOf(budget), py:revenueOf(py), kind:'subtotal'});
+  rows.push({label:'Cost of Sales',kind:'section'});
+  push('Food Cost',l=>l.foodCost); push('Beverage Cost',l=>l.beverageCost); push('Packaging Cost',l=>l.packagingCost);
+  rows.push({label:'Total Cost of Sales', a:cogsOf(actual), b:cogsOf(budget), py:cogsOf(py), kind:'subtotal'});
+  rows.push({label:'Gross Profit', a:revenueOf(actual)-cogsOf(actual), b:revenueOf(budget)-cogsOf(budget), py:revenueOf(py)-cogsOf(py), kind:'total'});
+  rows.push({label:'Operating Expenses',kind:'section'});
+  push('Payroll',l=>l.payroll); push('Overtime',l=>l.overtime); push('Staff Benefits',l=>l.staffBenefits); push('Rent',l=>l.rent); push('Utilities',l=>l.utilities);
+  push('Marketing',l=>l.marketing); push('Repairs & Maintenance',l=>l.repairsMaintenance); push('Cleaning',l=>l.cleaning); push('Security',l=>l.security);
+  push('Technology',l=>l.technology); push('Other Expenses',l=>l.otherExpenses);
+  rows.push({label:'Total Operating Expenses', a:opexOf(actual), b:opexOf(budget), py:opexOf(py), kind:'subtotal'});
+  rows.push({label:'EBITDA', a:ebitdaOf(actual), b:ebitdaOf(budget), py:ebitdaOf(py), kind:'total'});
+  push('Depreciation',l=>l.depreciation,false);
+  rows.push({label:'Operating Profit', a:opOf(actual), b:opOf(budget), py:opOf(py), kind:'total'});
+  push('Finance Cost',l=>l.financeCost,false);
+  rows.push({label:'Net Profit', a:netOf(actual), b:netOf(budget), py:netOf(py), kind:'total'});
+  return rows;
+}
+function renderPnl(){
+  const outlets=filteredOutlets();
+  if(!state.selectedOutlet || !outlets.find(o=>o.id===state.selectedOutlet)) state.selectedOutlet = outlets[0]?.id;
+  const outlet = outlets.find(o=>o.id===state.selectedOutlet);
+  const history = DATA.records.filter(r=>r.outletId===state.selectedOutlet);
+  const rec = history.find(r=>r.period===state.period);
+
+  const content = document.getElementById('content');
+  if(!outlet || !rec){ content.innerHTML = `<div class="card card-pad">No outlet data for the current filter selection.</div>`; return; }
+
+  const t = totalsOf(rec.actual);
+  const series = [
+    {name:'Revenue', color:COLOR.navy, points: history.map(r=>({x:periodShort(r.period), y:revenueOf(r.actual)}))},
+    {name:'Budget', color:COLOR.muted, dash:'4 3', points: history.map(r=>({x:periodShort(r.period), y:revenueOf(r.budget)}))},
+    {name:'EBITDA', color:COLOR.gold, points: history.map(r=>({x:periodShort(r.period), y:ebitdaOf(r.actual)}))},
+  ];
+  const rows = pnlRows(rec.actual, rec.budget, rec.priorYear);
+
+  content.innerHTML = `
+    <div class="grid" style="grid-template-columns:260px 1fr; gap:14px; align-items:start;">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Outlets</div><div class="card-desc">${outlets.length} in current scope</div></div>
+        <div class="outlet-list">${outlets.map(o=>`<button class="outlet-item ${o.id===state.selectedOutlet?'on':''}" data-outlet="${o.id}">
+          <div class="nm">${o.name}</div><div class="mt">${o.code} · ${o.category}</div></button>`).join('')}</div>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:14px;">
+          <div class="card-pad">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">
+              <div><div class="card-title" style="font-size:15px;">${outlet.name}</div><div class="card-desc">${outlet.code} · ${outlet.city} · ${outlet.category} · Manager: ${outlet.areaManager}</div></div>
+              <div style="display:flex; align-items:center; gap:8px;">${statusBadge(rec.reportingStatus)}<span style="font-size:11px; color:var(--muted);">Submitted ${fmtDate(rec.submittedOn)}</span></div>
+            </div>
+            <div class="grid g-4" style="margin-top:12px;">
+              <div style="background:var(--surface-2); border-radius:8px; padding:8px 10px;"><div style="font-size:10.5px; color:var(--muted);">Revenue</div><div class="num" style="font-weight:800;">${fmtCurCompact(t.revenue)}</div></div>
+              <div style="background:var(--surface-2); border-radius:8px; padding:8px 10px;"><div style="font-size:10.5px; color:var(--muted);">EBITDA</div><div class="num" style="font-weight:800;">${fmtCurCompact(t.ebitda)}</div></div>
+              <div style="background:var(--surface-2); border-radius:8px; padding:8px 10px;"><div style="font-size:10.5px; color:var(--muted);">Net Profit</div><div class="num" style="font-weight:800;">${fmtCurCompact(t.net)}</div></div>
+              <div style="background:var(--surface-2); border-radius:8px; padding:8px 10px;"><div style="font-size:10.5px; color:var(--muted);">EBITDA %</div><div class="num" style="font-weight:800;">${fmtPct(t.ebitdaPct)}</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:14px;">
+          <div class="card-head"><div class="card-title">Revenue &amp; EBITDA Trend</div><div class="card-desc">Rolling 13-month actual vs budget</div></div>
+          <div class="card-pad">${lineChart(series)}</div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title">Full P&amp;L Statement</div><div class="card-desc">${periodLabel(state.period)} · Actual vs Budget vs Prior Year</div></div>
+          <div class="card-pad tbl-wrap">
+            <table><thead><tr><th>Line Item</th><th class="r">Actual</th><th class="r">Budget</th><th class="r">Variance</th><th class="r">Prior Year</th></tr></thead>
+            <tbody>${rows.map(r=>{
+              if(r.kind==='section') return `<tr><td colspan="5" class="section-label">${r.label}</td></tr>`;
+              const v=pct(r.a,r.b); const strong = r.kind==='total'||r.kind==='subtotal';
+              return `<tr style="${r.kind==='total'?'background:var(--surface-2);':''}">
+                <td style="${r.indent?'padding-left:22px;color:var(--muted);':''} ${strong?'font-weight:800;color:var(--ink);':''}">${r.label}</td>
+                <td class="num r" style="${strong?'font-weight:800;':''}">${fmtCur(r.a)}</td>
+                <td class="num r" style="color:var(--muted);">${fmtCur(r.b)}</td>
+                <td class="num r" style="font-weight:700; color:${v>=0?'var(--fairway)':'var(--clay)'}">${fmtPct(v)}</td>
+                <td class="num r" style="color:var(--muted);">${fmtCur(r.py)}</td>
+              </tr>`;
+            }).join('')}</tbody></table>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+/* ============================== PAGE: RANKING ============================== */
+function renderRanking(){
+  const outlets=filteredOutlets(); const recs=recordsFor(state.period, outlets);
+  const outletById=Object.fromEntries(outlets.map(o=>[o.id,o]));
+  const ranked = recs.map(r=>{ const o=outletById[r.outletId]; const t=totalsOf(r.actual); return {o,r,t,ebitda:t.ebitda}; }).sort((a,b)=>b.ebitda-a.ebitda);
+  const top20=ranked.slice(0,20), bottom20=[...ranked].reverse().slice(0,20);
+
+  document.getElementById('content').innerHTML = `
+    <div class="grid g-4" style="margin-bottom:14px;">
+      ${top20.slice(0,4).map((r,i)=>`<div class="card card-pad" style="display:flex; align-items:center; gap:10px; ${i===0?'border-color:var(--gold);':''}">
+        <div style="width:32px;height:32px;border-radius:99px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;${i===0?'background:var(--gold);color:#241D0F;':'background:var(--surface-2);color:var(--muted);'}">${i===0?'★':i+1}</div>
+        <div style="min-width:0;"><div style="font-size:11.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${r.o.name}</div><div class="num" style="font-size:13px; font-weight:800; color:var(--navy);">${fmtCurCompact(r.ebitda)}</div></div>
+      </div>`).join('')}
+    </div>
+    <div class="grid g-2">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Top 20 Outlets</div><div class="card-desc">Ranked by EBITDA</div></div>
+        <div class="card-pad tbl-wrap"><table><thead><tr><th>#</th><th>Outlet</th><th>Category</th><th class="r">EBITDA</th></tr></thead>
+        <tbody>${top20.map((r,i)=>`<tr><td>${i+1}</td><td style="font-weight:700;">${r.o.name}</td><td style="color:var(--muted);">${r.o.category}</td><td class="num r" style="font-weight:700; color:var(--fairway);">${fmtCurCompact(r.ebitda)}</td></tr>`).join('')}</tbody></table></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Bottom 20 Outlets</div><div class="card-desc">Ranked by EBITDA</div></div>
+        <div class="card-pad tbl-wrap"><table><thead><tr><th>#</th><th>Outlet</th><th>Category</th><th class="r">EBITDA</th></tr></thead>
+        <tbody>${bottom20.map((r,i)=>`<tr><td>${i+1}</td><td style="font-weight:700;">${r.o.name}</td><td style="color:var(--muted);">${r.o.category}</td><td class="num r" style="font-weight:700; color:var(--clay);">${fmtCurCompact(r.ebitda)}</td></tr>`).join('')}</tbody></table></div>
+      </div>
+    </div>`;
+}
+
+/* ============================== PAGE: REGIONAL ============================== */
+function renderRegional(){
+  const outlets=filteredOutlets(); const recs=recordsFor(state.period, outlets);
+  const outletById=Object.fromEntries(outlets.map(o=>[o.id,o]));
+  const byRegion={};
+  recs.forEach(r=>{ const o=outletById[r.outletId]; if(!o) return; (byRegion[o.regionId]=byRegion[o.regionId]||[]).push(r); });
+  const rows = DATA.regions.map(region=>{
+    const rs=byRegion[region.id]; if(!rs) return null;
+    const t = totalsOf(sumLines(rs.map(r=>r.actual)));
+    return {region, t, count:rs.length};
+  }).filter(Boolean).sort((a,b)=>b.t.revenue-a.t.revenue);
+
+  document.getElementById('content').innerHTML = `
+    <div class="card" style="margin-bottom:14px;">
+      <div class="card-head"><div class="card-title">Revenue by Region</div><div class="card-desc">Comparison for ${periodLabel(state.period)}</div></div>
+      <div class="card-pad">${barChart(rows.map((r,i)=>({label:r.region.name, value:r.t.revenue, color:[COLOR.navy,COLOR.gold,'#3d6299','#8f6a22','#2c4a78'][i%5]})))}</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Regional Performance Table</div><div class="card-desc">Region · Country · Margins</div></div>
+      <div class="card-pad tbl-wrap"><table><thead><tr><th>Region</th><th>Country</th><th class="r">Outlets</th><th class="r">Revenue</th><th class="r">Gross Margin</th><th class="r">EBITDA %</th><th class="r">Net Margin</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr><td style="font-weight:700;">${r.region.name}</td><td style="color:var(--muted);">${r.region.country}</td><td class="num r">${r.count}</td>
+        <td class="num r">${fmtCurCompact(r.t.revenue)}</td><td class="num r">${fmtPct(r.t.gpPct)}</td><td class="num r">${fmtPct(r.t.ebitdaPct)}</td><td class="num r">${fmtPct(r.t.netPct)}</td></tr>`).join('')}</tbody></table></div>
+    </div>`;
+}
+
+/* ============================== PAGE: BUDGET VS ACTUAL ============================== */
+function renderBudget(){
+  const outlets=filteredOutlets(); const recs=recordsFor(state.period, outlets);
+  const a=sumLines(recs.map(r=>r.actual)), b=sumLines(recs.map(r=>r.budget));
+  const at=totalsOf(a), bt=totalsOf(b);
+  const revVar=revenueOf(a)-revenueOf(b), costVar=-(cogsOf(a)-cogsOf(b)), laborVar=-(payrollOf(a)-payrollOf(b));
+  const otherOpexVar = -((opexOf(a)-payrollOf(a))-(opexOf(b)-payrollOf(b)));
+  const steps=[{label:'Budget EBITDA',value:ebitdaOf(b),isTotal:true},{label:'Revenue Var',value:revVar},{label:'Cost of Sales Var',value:costVar},{label:'Labor Var',value:laborVar},{label:'Other Opex Var',value:otherOpexVar},{label:'Actual EBITDA',value:ebitdaOf(a),isTotal:true}];
+  const outletById=Object.fromEntries(outlets.map(o=>[o.id,o]));
+  const varRows = recs.map(r=>{ const o=outletById[r.outletId]; const ae=ebitdaOf(r.actual), be=ebitdaOf(r.budget); return {o, ae, be, v:ae-be, vp:pct(ae,be)}; }).sort((x,y)=>x.v-y.v);
+
+  const cards = [
+    ['Revenue Variance', at.revenue, bt.revenue],
+    ['Cost Variance', at.cos, bt.cos],
+    ['Labor Variance', payrollOf(a), payrollOf(b)],
+    ['Food Cost Variance', a.foodCost, b.foodCost],
+    ['Occupancy Variance', occupancyOf(a), occupancyOf(b)],
+    ['Profit Variance', at.net, bt.net],
+  ];
+
+  document.getElementById('content').innerHTML = `
+    <div class="grid g-6" style="margin-bottom:14px;">
+      ${cards.map(([label,act,bud])=>{ const v=pct(act,bud); return `<div class="card card-pad">
+        <div class="stat-label">${label}</div>
+        <div class="num" style="font-size:15px; font-weight:800; white-space:nowrap; margin-top:4px;">${fmtCurCompact(act-bud)}</div>
+        <span class="trend ${v>=0?'up':'down'}" style="white-space:nowrap;">${v>=0?'↗':'↘'} ${fmtSignedPct(v)}</span>
+        </div>`; }).join('')}
+    </div>
+    <div class="card" style="margin-bottom:14px;">
+      <div class="card-head"><div class="card-title">EBITDA Bridge — Budget to Actual</div><div class="card-desc">${periodLabel(state.period)}</div></div>
+      <div class="card-pad">${waterfall(steps)}</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Outlet Variance Ranking</div><div class="card-desc">EBITDA variance vs budget, most unfavorable first</div></div>
+      <div class="card-pad tbl-wrap"><table><thead><tr><th>Outlet</th><th class="r">Actual EBITDA</th><th class="r">Budget EBITDA</th><th class="r">Variance</th><th class="r">Variance %</th></tr></thead>
+      <tbody>${varRows.map(r=>`<tr><td style="font-weight:700;">${r.o.name}</td><td class="num r">${fmtCur(r.ae)}</td><td class="num r" style="color:var(--muted);">${fmtCur(r.be)}</td>
+        <td class="num r" style="font-weight:700; color:${r.v>=0?'var(--fairway)':'var(--clay)'}">${fmtCur(r.v)}</td><td class="num r" style="font-weight:700; color:${r.vp>=0?'var(--fairway)':'var(--clay)'}">${fmtPct(r.vp)}</td></tr>`).join('')}</tbody></table></div>
+    </div>`;
+}
+
+/* ============================== PAGE: LIKE-FOR-LIKE ============================== */
+function renderLfl(){
+  const outlets=filteredOutlets();
+  const comparable=new Set(outlets.filter(o=>!o.isNewThisYear && !o.isClosed).map(o=>o.id));
+  const news=new Set(outlets.filter(o=>o.isNewThisYear).map(o=>o.id));
+  const closed=new Set(outlets.filter(o=>o.isClosed).map(o=>o.id));
+  const ids=new Set(outlets.map(o=>o.id));
+  const series = ALL_PERIODS.map(period=>{
+    const recs=DATA.records.filter(r=>r.period===period && ids.has(r.outletId));
+    const total=recs.reduce((s,r)=>s+revenueOf(r.actual),0), totalPY=recs.reduce((s,r)=>s+revenueOf(r.priorYear),0);
+    const comp=recs.filter(r=>comparable.has(r.outletId));
+    const compA=comp.reduce((s,r)=>s+revenueOf(r.actual),0), compPY=comp.reduce((s,r)=>s+revenueOf(r.priorYear),0);
+    const newRev=recs.filter(r=>news.has(r.outletId)).reduce((s,r)=>s+revenueOf(r.actual),0);
+    const closedRev=recs.filter(r=>closed.has(r.outletId)).reduce((s,r)=>s+revenueOf(r.actual),0);
+    const closedPY=recs.filter(r=>closed.has(r.outletId)).reduce((s,r)=>s+revenueOf(r.priorYear),0);
+    return {period,total,totalPY,compA,compPY,lfl:pct(compA,compPY),newRev,closedImpact:closedRev-closedPY};
+  });
+  const cur = series.find(s=>s.period===CURRENT_PERIOD)||series[series.length-1];
+  const ytd = series.filter(s=>s.period.startsWith(CURRENT_PERIOD.slice(0,4)));
+  const ytdLfl = pct(ytd.reduce((s,x)=>s+x.compA,0), ytd.reduce((s,x)=>s+x.compPY,0));
+  const rollingLfl = pct(series.reduce((s,x)=>s+x.compA,0), series.reduce((s,x)=>s+x.compPY,0));
+
+  const lineSeries=[
+    {name:'Total Revenue', color:COLOR.navy, points:series.map(s=>({x:periodShort(s.period), y:s.total}))},
+    {name:'LFL (Comparable)', color:COLOR.gold, points:series.map(s=>({x:periodShort(s.period), y:s.compA}))},
+    {name:'Prior Year', color:COLOR.muted, dash:'4 3', points:series.map(s=>({x:periodShort(s.period), y:s.totalPY}))},
+  ];
+  const wf=[{label:'Prior Year Revenue', value:cur.totalPY, isTotal:true},{label:'LFL Growth', value:cur.compA-cur.compPY},{label:'New Outlet Impact', value:cur.newRev},{label:'Closed Outlet Impact', value:cur.closedImpact},{label:'Current Revenue', value:cur.total, isTotal:true}];
+
+  document.getElementById('content').innerHTML = `
+    <div class="grid g-3" style="margin-bottom:14px;">
+      <div class="card card-pad"><div class="stat-label">Current Month LFL Growth</div><div class="num" style="font-size:22px; font-weight:800;">${(cur.lfl*100).toFixed(1)}%</div></div>
+      <div class="card card-pad"><div class="stat-label">Year-to-Date LFL Growth</div><div class="num" style="font-size:22px; font-weight:800;">${(ytdLfl*100).toFixed(1)}%</div></div>
+      <div class="card card-pad"><div class="stat-label">Rolling 12-Month LFL Growth</div><div class="num" style="font-size:22px; font-weight:800;">${(rollingLfl*100).toFixed(1)}%</div></div>
+    </div>
+    <div class="card" style="margin-bottom:14px;">
+      <div class="card-head"><div class="card-title">Total vs Like-for-Like Revenue Trend</div><div class="card-desc">Rolling 13 months</div></div>
+      <div class="card-pad">${lineChart(lineSeries)}</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Revenue Bridge — Prior Year to Current</div></div>
+      <div class="card-pad">${waterfall(wf)}</div>
+    </div>`;
+}
+
+/* ============================== PAGE: HEALTH SCORE ============================== */
+function renderHealth(){
+  const outlets=filteredOutlets(); const recs=recordsFor(state.period, outlets);
+  const outletById=Object.fromEntries(outlets.map(o=>[o.id,o]));
+  const scored = recs.map(r=>({o:outletById[r.outletId], h:healthScore(r)})).filter(x=>x.o).sort((a,b)=>b.h.score-a.h.score);
+  const tierCounts={Excellent:0,Good:0,Fair:0,'Action Required':0}; scored.forEach(s=>tierCounts[s.h.tier]++);
+  const tierColor={Excellent:'var(--fairway)',Good:'var(--navy)',Fair:'var(--amber)','Action Required':'var(--clay)'};
+  const tierRange={Excellent:'90–100',Good:'80–89',Fair:'70–79','Action Required':'< 70'};
+
+  document.getElementById('content').innerHTML = `
+    <div class="grid g-4" style="margin-bottom:14px;">
+      ${Object.keys(tierCounts).map(t=>`<div class="card card-pad">
+        <div style="display:flex; justify-content:space-between; align-items:center;"><span class="stat-label">${t}</span><span class="badge" style="background:color-mix(in srgb, ${tierColor[t]} 16%, transparent); color:${tierColor[t]};">${tierRange[t]}</span></div>
+        <div class="num" style="font-size:22px; font-weight:800; margin-top:4px;">${tierCounts[t]}</div><div style="font-size:10.5px; color:var(--muted);">outlet(s)</div>
+      </div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Outlet Health Score</div><div class="card-desc">Weighted composite: sales growth, profitability, cost control, reporting compliance, labor & inventory efficiency</div></div>
+      <div class="card-pad tbl-wrap"><table><thead><tr><th>Outlet</th><th>Category</th><th style="width:180px;">Breakdown</th><th class="r">Score</th><th class="r">Tier</th></tr></thead>
+      <tbody>${scored.map(s=>`<tr><td style="font-weight:700;">${s.o.name}</td><td style="color:var(--muted);">${s.o.category}</td>
+        <td><div style="display:flex; height:8px; width:150px; border-radius:99px; overflow:hidden; background:var(--surface-2);">
+          ${s.h.comps.map(c=>`<div style="width:${c[2]*100}%; background:${tierColor[s.h.tier]}; opacity:${0.4+(c[1]/100)*0.6};" title="${c[0]}: ${Math.round(c[1])}"></div>`).join('')}
+        </div></td>
+        <td class="num r" style="font-size:14px; font-weight:800;">${s.h.score}</td>
+        <td class="r"><span class="badge" style="background:color-mix(in srgb, ${tierColor[s.h.tier]} 16%, transparent); color:${tierColor[s.h.tier]};">${s.h.tier}</span></td></tr>`).join('')}</tbody></table></div>
+    </div>`;
+}
+
+/* ============================== PAGE: EXCEPTIONS ============================== */
+function renderExceptions(){
+  const outlets=filteredOutlets(); const recs=recordsFor(state.period, outlets);
+  const outletById=Object.fromEntries(outlets.map(o=>[o.id,o]));
+  const items = detectExceptions(recs, outletById);
+  const bySev={Critical:0,High:0,Medium:0,Low:0}; items.forEach(i=>bySev[i.severity]++);
+  const sevCls={Critical:'b-danger',High:'b-warning',Medium:'b-navy',Low:'b-gold'};
+
+  document.getElementById('content').innerHTML = `
+    <div class="grid g-4" style="margin-bottom:14px;">
+      ${Object.entries(bySev).map(([s,c])=>`<div class="card card-pad"><div style="display:flex; justify-content:space-between; align-items:center;"><span class="stat-label">${s}</span><span class="badge ${sevCls[s]}">${s}</span></div><div class="num" style="font-size:22px; font-weight:800; margin-top:4px;">${c}</div></div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Exception Register</div><div class="card-desc">Automated detection across revenue, margin, cost, reporting and cash-flow thresholds</div></div>
+      <div class="card-pad tbl-wrap"><table><thead><tr><th>Issue</th><th>Outlet</th><th class="r">Impact</th><th>Owner</th></tr></thead>
+      <tbody>${items.map(e=>`<tr><td><span class="badge ${sevCls[e.severity]}">${e.severity}</span> <b>${e.type}</b><div style="font-size:10.5px; color:var(--muted); max-width:360px; margin-top:2px;">${e.desc}</div></td>
+        <td style="color:var(--muted);">${e.outlet.name}</td><td class="num r" style="color:${e.impact<0?'var(--clay)':'var(--muted)'}">${e.impact!==0?fmtCur(e.impact):'—'}</td><td style="color:var(--muted);">${e.owner}</td></tr>`).join('')}
+      ${items.length===0?'<tr><td colspan="4" style="text-align:center; padding:24px; color:var(--muted);">No exceptions detected — clean period.</td></tr>':''}
+      </tbody></table></div>
+    </div>`;
+}
+
+/* ============================== PAGE: AI INSIGHTS ============================== */
+function renderInsights(){
+  const outlets=filteredOutlets(); const recs=recordsFor(state.period, outlets);
+  const outletById=Object.fromEntries(outlets.map(o=>[o.id,o]));
+  const insights = generateInsights(recs, outletById);
+  const themeCls={Performance:'b-navy',Cost:'b-warning',Compliance:'b-danger',Risk:'b-danger',Growth:'b-success'};
+
+  document.getElementById('content').innerHTML = `
+    <div class="card card-pad" style="margin-bottom:14px; border-color:var(--gold);">
+      <div style="display:flex; align-items:center; gap:8px;"><span style="font-size:18px;">✦</span><div><div class="card-title">AI Finance Insights</div><div class="card-desc">Automated commentary generated from this period's outlet-level P&amp;L data</div></div></div>
+    </div>
+    <div class="grid g-2">
+      ${insights.map(i=>`<div class="card card-pad" style="border-left:4px solid ${i.tone==='positive'?'var(--fairway)':i.tone==='negative'?'var(--clay)':'var(--muted)'};">
+        <span class="badge ${themeCls[i.theme]}" style="margin-bottom:6px;">${i.theme}</span>
+        <p style="font-size:12.5px; line-height:1.5; margin:4px 0 0;">${i.text}</p>
+      </div>`).join('')}
+      ${insights.length===0?'<div class="card card-pad" style="grid-column:1/-1; text-align:center; color:var(--muted);">No notable variances detected — performance is tracking to plan.</div>':''}
+    </div>`;
+}
+
+/* ============================== PAGE: BOARD PACK ============================== */
+function renderBoard(){
+  const outlets=filteredOutlets(); const recs=recordsFor(state.period, outlets);
+  const outletById=Object.fromEntries(outlets.map(o=>[o.id,o]));
+  const a=sumLines(recs.map(r=>r.actual)), b=sumLines(recs.map(r=>r.budget)), py=sumLines(recs.map(r=>r.priorYear));
+  const at=totalsOf(a), bt=totalsOf(b), pyt=totalsOf(py);
+  const revVar=pct(at.revenue,bt.revenue), ebitdaVar=pct(at.ebitda,bt.ebitda);
+  const missing=recs.filter(r=>r.reportingStatus==='Missing').length;
+  const completion = recs.length? (recs.length-missing)/recs.length : 1;
+  const items=detectExceptions(recs,outletById); const insights=generateInsights(recs,outletById);
+  const risks=insights.filter(i=>i.tone==='negative').slice(0,4);
+  const opps=insights.filter(i=>i.tone==='positive').slice(0,4);
+  const crit=items.filter(i=>i.severity==='Critical').slice(0,5);
+
+  document.getElementById('content').innerHTML = `
+    <div style="max-width:820px; margin:0 auto;">
+      <div class="card card-pad" style="background:var(--navy-ink); color:#fff; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div><div class="eyebrow" style="color:var(--gold);">Monthly Board Pack</div><h2 class="disp" style="font-size:20px; font-weight:700;">Royal Golf Club — Outlet Performance Review</h2><div style="font-size:12px; color:#9FB2C8;">${periodLabel(state.period)} · ${outlets.length} outlet(s) in scope</div></div>
+        <button class="btn" onclick="window.print()" style="background:var(--gold); color:#241D0F; border:none;">Print / Export</button>
+      </div>
+      <div class="grid g-4" style="margin-bottom:14px;">
+        ${statTile('Revenue', fmtCur(at.revenue), revVar>=0?'var(--fairway)':'var(--clay)')}
+        ${statTile('EBITDA', fmtCur(at.ebitda), ebitdaVar>=0?'var(--fairway)':'var(--clay)')}
+        ${statTile('Net Profit', fmtCur(at.net), at.net>=0?'var(--fairway)':'var(--clay)')}
+        ${statTile('Reporting Completion', fmtPct(completion), completion>0.9?'var(--fairway)':'var(--amber)')}
+      </div>
+      ${boardSection('Revenue Performance', `Consolidated revenue for ${periodLabel(state.period)} was ${fmtCur(at.revenue)}, ${revVar>=0?'ahead of':'behind'} budget by ${fmtPct(Math.abs(revVar))} and ${fmtSignedPct(pct(at.revenue,pyt.revenue))} vs the prior year comparable period.`)}
+      ${boardSection('Profitability', `EBITDA landed at ${fmtCur(at.ebitda)} (${fmtPct(at.ebitdaPct)} margin), a variance of ${fmtSignedPct(ebitdaVar)} to budget. Net profit was ${fmtCur(at.net)}, a net margin of ${fmtPct(at.netPct)}.`)}
+      ${boardSection('Cost Efficiency', `Labor cost stood at ${fmtPct(at.laborPct)} of revenue (budget ${fmtPct(bt.laborPct)}), food cost at ${fmtPct(at.foodPct)}, and occupancy cost at ${fmtPct(at.occPct)}. Gross margin was ${fmtPct(at.gpPct)}.`)}
+      ${boardSection('Outlet Compliance', `${fmtPct(completion)} of in-scope outlets submitted their monthly P&amp;L on time. ${missing} outlet(s) remain outstanding and have been escalated via the Reporting Control Tower.`)}
+      ${boardSection('Key Risks', (crit.length+risks.length)===0? '<span style="color:var(--muted)">No material risks identified for the current period.</span>' :
+        '<ul style="margin:0; padding-left:18px;">'+crit.map(e=>`<li style="margin-bottom:4px;"><span class="badge b-danger">${e.type}</span> ${e.desc}</li>`).join('')+risks.map(r=>`<li style="margin-bottom:4px;">${r.text}</li>`).join('')+'</ul>')}
+      ${boardSection('Key Opportunities', opps.length===0? '<span style="color:var(--muted)">No standout opportunities flagged for the current period.</span>' : '<ul style="margin:0; padding-left:18px;">'+opps.map(o=>`<li style="margin-bottom:4px;">${o.text}</li>`).join('')+'</ul>')}
+    </div>`;
+}
+function boardSection(title, body){
+  return `<div class="card" style="margin-bottom:12px;"><div class="card-head"><div class="card-title">${title}</div></div><div class="card-pad" style="font-size:12.5px; line-height:1.6;">${body}</div></div>`;
+}
+
+/* ============================== ROUTER ============================== */
+const PAGES = { overview:{fn:renderOverview,label:'Executive Overview',sub:'Group KPIs & trends'},
+  tower:{fn:renderTower,label:'Reporting Control Tower',sub:'Completeness & compliance'},
+  pnl:{fn:renderPnl,label:'Outlet P&L',sub:'Full statement by outlet'},
+  ranking:{fn:renderRanking,label:'Performance Ranking',sub:'Top & bottom outlets'},
+  regional:{fn:renderRegional,label:'Regional Performance',sub:'Region / country / city'},
+  budget:{fn:renderBudget,label:'Budget vs Actual',sub:'Variance analysis'},
+  lfl:{fn:renderLfl,label:'Like-for-Like Sales',sub:'Same-store growth'},
+  health:{fn:renderHealth,label:'Outlet Health Score',sub:'0–100 composite score'},
+  exceptions:{fn:renderExceptions,label:'Exception Management',sub:'Automated risk flags'},
+  insights:{fn:renderInsights,label:'AI Finance Insights',sub:'Automated commentary'},
+  board:{fn:renderBoard,label:'Monthly Board Pack',sub:'Executive narrative'} };
+
+function renderAll(){
+  renderNav(); renderFilters();
+  const sourceLabel = DATA && DATA.source === 'synthetic' ? 'Demo' : 'Live · Odoo';
+  document.getElementById('pageTitle').innerHTML = PAGES[state.tab].label + `<span class="live-pill"><span class="live-dot"></span>${sourceLabel}</span>`;
+  const notes = (DATA && DATA.notes && DATA.notes.length) ? ' — ' + DATA.notes[0] : '';
+  document.getElementById('pageSub').innerHTML = PAGES[state.tab].sub + `<span title="${(DATA&&DATA.notes||[]).join(' \n')}" style="cursor:help;">${notes}</span>`;
+  PAGES[state.tab].fn();
+}
+function tick(){ document.getElementById('clock').textContent = new Date().toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'medium'}); }
+setInterval(tick,1000); tick();
+
+document.getElementById('nav').addEventListener('click', e=>{ const b=e.target.closest('[data-nav]'); if(!b) return; state.tab=b.dataset.nav; renderAll(); });
+document.getElementById('fPeriod').addEventListener('change', e=>{ state.period=e.target.value; renderAll(); });
+document.getElementById('fRegion').addEventListener('change', e=>{ state.regionId=e.target.value; renderAll(); });
+document.getElementById('fCategory').addEventListener('change', e=>{ state.category=e.target.value; renderAll(); });
+document.getElementById('fScale').addEventListener('click', async e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  state.scale=b.dataset.scale; state.regionId='all'; state.category='all'; state.selectedOutlet=null;
+  renderFilters();
+  await loadData(); renderAll();
+});
+document.getElementById('btnRefresh').addEventListener('click', async ()=>{ await loadData(); renderAll(); });
+document.getElementById('content').addEventListener('click', e=>{ const b=e.target.closest('[data-outlet]'); if(!b) return; state.selectedOutlet=b.dataset.outlet; renderPnl(); document.querySelectorAll('.outlet-item').forEach(x=>x.classList.toggle('on', x.dataset.outlet===state.selectedOutlet)); });
+
+async function init(){
+  renderNav(); renderFilters();
+  document.getElementById('content').innerHTML = loadingBanner('Loading live outlet P&amp;L from Odoo — first load can take up to a minute while the server builds its cache…');
+  await loadData();
+  renderAll();
+}
+init();
+</script>
+</body>
+</html>

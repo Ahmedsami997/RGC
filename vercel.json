@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/pnl.py": {
+      "maxDuration": 60
+    }
+  }
+}
