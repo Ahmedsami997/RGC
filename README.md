@@ -30,12 +30,13 @@ it needs your Vercel login)
    | `ODOO_DB` | `mast-it-golf-main-15203359` |
    | `ODOO_USERNAME` | `ahmed@theroyalgolfclub.com` |
    | `ODOO_API_KEY` | *(copy from `.env.it_dashboard`)* |
-   | `DASHBOARD_USERNAME` | *(pick a login username)* |
-   | `DASHBOARD_PASSWORD` | *(pick a strong password)* |
+   | `DASHBOARD_USERS` | `username1:password1,username2:password2,...` |
 
+   `DASHBOARD_USERS` holds every login as comma-separated `username:password`
+   pairs — add or remove people by editing this one value and redeploying.
    Apply them to Production (and Preview if you want previews to work too).
-   **Never commit these into the repo** — `.gitignore` already excludes
-   `.env`.
+   **Never commit real values into the repo** — `.gitignore` already
+   excludes `.env`, and this file only ever shows placeholder examples.
 
 3. **Custom domain**: Project → Settings → Domains → Add →
    `outlet.theroyalgolfclub.com`. Vercel will show you a DNS record to add
@@ -64,6 +65,16 @@ than the 13 months the self-hosted version uses, to keep a cold-cache
 request safely inside serverless time limits. If your Vercel plan allows
 longer function durations, raise `PNL_MONTHS` (and `vercel.json`'s
 `maxDuration`) back toward 13.
+
+## Managing dashboard logins
+
+All logins live in the single `DASHBOARD_USERS` environment variable
+(Project → Settings → Environment Variables), as `username:password` pairs
+separated by commas — e.g. `Alice:pass1,Bob:pass2`. To add, remove, or
+change someone's password: edit that value and **redeploy** (env var
+changes don't apply to an already-running deployment). There's no user
+database — passwords are plain values in that one variable, checked by
+`middleware.js` on every request.
 
 ## Keeping this in sync with the self-hosted version
 
