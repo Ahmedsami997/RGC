@@ -451,7 +451,7 @@ function generateInsights(records, outletById){
 }
 
 /* ============================== STATE ============================== */
-const state = { tab:'overview', period: CURRENT_PERIOD, regionId:'all', category:'all', scale:'realistic', selectedOutlet:null };
+const state = { tab:'overview', period: CURRENT_PERIOD, regionId:'all', category:'all', scale:'realistic', selectedOutlet:null, consolidatedDept:'consolidated' };
 let DATA = null;
 
 function normalizeLiveOutlet(o){
@@ -1231,7 +1231,157 @@ function renderConsolidated(){
           </tbody>
         </table>
       </div>
+    </div>
+
+    <div class="card" style="margin:14px 0;">
+      <div class="card-head" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+        <div><div class="card-title">Full Statement</div><div class="card-desc">Every GL account, same layout as the finance team's Excel report</div></div>
+        <select id="consolidatedDeptSelect" style="height:30px; border-radius:7px; border:1px solid var(--line); padding:2px 8px; font-size:12px; font-weight:600;">
+          <option value="consolidated">Consolidated (All Departments)</option>
+          ${DATA.departments.map(d=>`<option value="${d.id}" ${state.consolidatedDept===d.id?'selected':''}>${d.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="card-pad" id="detailRoot">${loadingBanner('Loading full statement…')}</div>
+    </div>
+
+    <div class="card" id="fbCard">
+      <div class="card-head"><div class="card-title">F&amp;B Revenue &amp; Cost of Sales by Outlet</div><div class="card-desc">${periodLabel(state.period)} · Actual</div></div>
+      <div class="card-pad" id="fbRoot">${loadingBanner('Loading F&amp;B breakdown…')}</div>
     </div>`;
+
+  document.getElementById('consolidatedDeptSelect').addEventListener('change', e=>{
+    state.consolidatedDept = e.target.value;
+    renderConsolidatedDetail();
+  });
+  renderConsolidatedDetail();
+  renderFbByOutlet();
+}
+
+async function renderConsolidatedDetail(){
+  const root = document.getElementById('detailRoot');
+  if(!root) return;
+  const period = state.period, dept = state.consolidatedDept;
+  try {
+    const data = await fetchDetail(period, dept);
+    if(state.tab!=='consolidated' || state.period!==period || state.consolidatedDept!==dept) return; // stale
+    root.innerHTML = renderStatementHtml(data);
+  } catch(err) {
+    root.innerHTML = loadingBanner('Could not load full statement: '+err.message);
+  }
+}
+async function renderFbByOutlet(){
+  const root = document.getElementById('fbRoot');
+  if(!root) return;
+  const period = state.period;
+  try {
+    const data = await fetchDetail(period, 'consolidated');
+    if(state.tab!=='consolidated' || state.period!==period) return;
+    root.innerHTML = renderFbTableHtml(data.fbByOutlet);
+  } catch(err) {
+    root.innerHTML = loadingBanner('Could not load F&amp;B breakdown: '+err.message);
+  }
+}
+
+function statementRow(line){
+  const v = pct(line.actual, line.budget);
+  return `<tr>
+    <td class="mono-small" style="color:var(--muted); white-space:nowrap;">${line.code}</td>
+    <td>${line.name}</td>
+    <td class="num r">${fmtCur(line.actual)}</td>
+    <td class="num r" style="color:var(--muted);">${fmtCur(line.budget)}</td>
+    <td class="num r" style="color:var(--muted);">${fmtCur(line.priorYear)}</td>
+    <td class="num r" style="font-weight:600; color:${v>=0?'var(--fairway)':'var(--clay)'}">${fmtSignedPct(v)}</td>
+  </tr>`;
+}
+function statementSectionTotalRow(label, totals){
+  const v = pct(totals.actual, totals.budget);
+  return `<tr style="background:var(--surface-2); font-weight:800;">
+    <td colspan="2">${label}</td>
+    <td class="num r">${fmtCur(totals.actual)}</td>
+    <td class="num r">${fmtCur(totals.budget)}</td>
+    <td class="num r">${fmtCur(totals.priorYear)}</td>
+    <td class="num r" style="color:${v>=0?'var(--fairway)':'var(--clay)'}">${fmtSignedPct(v)}</td>
+  </tr>`;
+}
+function summaryLine(label, totals, big){
+  const v = pct(totals.actual, totals.budget);
+  return `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; ${big?'background:var(--surface-2); border-radius:8px; font-weight:800;':'border-bottom:1px solid var(--line);'}">
+    <span>${label}</span>
+    <span style="display:flex; gap:18px; align-items:baseline;">
+      <span class="num" style="font-size:${big?'15px':'13px'}; color:${totals.actual>=0?'var(--fairway)':'var(--clay)'}">${fmtCur(totals.actual)}</span>
+      <span class="num" style="font-size:11px; color:var(--muted);">Budget ${fmtCur(totals.budget)}</span>
+      <span class="trend ${v>=0?'up':'down'}">${v>=0?'↗':'↘'} ${fmtSignedPct(v)}</span>
+    </span>
+  </div>`;
+}
+function renderStatementHtml(data){
+  const unrec = !data.departmentId || data.departmentId==='consolidated' ? '' :
+    (!DATA.departments.find(d=>d.id===data.departmentId)?.reconciled ? `<p style="font-size:11px; color:var(--amber); margin:0 0 10px;">&#9888; ${data.departmentName} does not yet fully reconcile with the manual report — see the info note above.</p>` : '');
+  const sectionsHtml = data.sections.map(s=>{
+    const label = s.name.charAt(0)+s.name.slice(1).toLowerCase();
+    return `<tr><td colspan="6" class="section-label">${s.name}</td></tr>
+      ${s.lines.map(statementRow).join('')}
+      ${statementSectionTotalRow('TOTAL '+s.name, s.totals)}`;
+  }).join('');
+  return `
+    ${unrec}
+    <div class="grid g-3" style="margin-bottom:12px;">
+      ${summaryLine('Gross Profit / Loss', data.grossProfit, true)}
+    </div>
+    <div class="tbl-wrap" style="max-height:560px; overflow-y:auto; border:1px solid var(--line); border-radius:8px; margin-bottom:14px;">
+      <table>
+        <thead style="position:sticky; top:0; background:var(--surface); z-index:1;"><tr>
+          <th>Code</th><th>Account Name</th><th class="r">Actual</th><th class="r">Budget</th><th class="r">Prior Year</th><th class="r">Var %</th>
+        </tr></thead>
+        <tbody>${sectionsHtml}</tbody>
+      </table>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:6px; max-width:420px; margin-left:auto;">
+      ${summaryLine('Gross Profit / Loss', data.grossProfit)}
+      ${summaryLine('Operating Profit (before Interest on SHL)', data.operatingProfit)}
+      ${summaryLine('Net Profit / Loss', data.netProfit, true)}
+    </div>`;
+}
+function renderFbTableHtml(fb){
+  if(!fb) return '<p style="color:var(--muted);">No F&amp;B data for this period.</p>';
+  const outlets = fb.outlets;
+  const rowHtml = (r)=>`<tr><td style="color:var(--muted);">${r.type}</td>
+    ${outlets.map(o=>`<td class="num r">${fmtCur(r.byOutlet[o.id]||0)}</td>`).join('')}
+    <td class="num r" style="font-weight:700;">${fmtCur(r.total)}</td></tr>`;
+  return `
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Revenue Type</th>${outlets.map(o=>`<th class="r">${o.name}</th>`).join('')}<th class="r">Total F&amp;B</th></tr></thead>
+        <tbody>
+          ${fb.revenueRows.map(rowHtml).join('')}
+          <tr style="background:var(--surface-2); font-weight:800;"><td>TOTAL REVENUE</td>
+            ${outlets.map(o=>`<td class="num r">${fmtCur(fb.revenueTotalByOutlet[o.id]||0)}</td>`).join('')}
+            <td class="num r">${fmtCur(fb.revenueGrandTotal)}</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="height:14px;"></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Cost of Sales Type</th>${outlets.map(o=>`<th class="r">${o.name}</th>`).join('')}<th class="r">Total F&amp;B</th></tr></thead>
+        <tbody>
+          ${fb.cosRows.map(rowHtml).join('')}
+          <tr style="background:var(--surface-2); font-weight:800;"><td>TOTAL COST OF SALES</td>
+            ${outlets.map(o=>`<td class="num r">${fmtCur(fb.cosTotalByOutlet[o.id]||0)}</td>`).join('')}
+            <td class="num r">${fmtCur(fb.cosGrandTotal)}</td></tr>
+        </tbody>
+      </table>
+    </div>`;
+}
+let detailCache = {};
+async function fetchDetail(period, department){
+  const key = period+'::'+department;
+  if(detailCache[key]) return detailCache[key];
+  const res = await fetch(`/api/pnl-detail?period=${encodeURIComponent(period)}&department=${encodeURIComponent(department)}`);
+  const json = await res.json();
+  if(json.error) throw new Error(json.error);
+  detailCache[key] = json;
+  return json;
 }
 
 /* ============================== ROUTER ============================== */
