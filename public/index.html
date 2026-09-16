@@ -237,7 +237,8 @@ const ICONS = {
   health:'<path d="M8 13.6 3 9.1c-1.7-1.6-1.7-4 0-5.5 1.6-1.5 3.9-1.3 5 .3 1.1-1.6 3.4-1.8 5-.3 1.7 1.5 1.7 3.9 0 5.5L8 13.6Z"/>',
   exceptions:'<path d="M8 2 14.2 13H1.8L8 2Z" stroke-linejoin="round"/><path d="M8 6.6v3M8 11.2h.01" stroke-linecap="round"/>',
   insights:'<path d="M8 1.6l1 2.7 2.7 1-2.7 1-1 2.7-1-2.7-2.7-1 2.7-1 1-2.7Z"/><path d="M13 9.4l.5 1.4 1.4.5-1.4.5-.5 1.4-.5-1.4-1.4-.5 1.4-.5.5-1.4Z"/>',
-  board:'<rect x="1.8" y="2.4" width="12.4" height="9.4" rx="1"/><path d="M4.4 12.6h7.2M6.2 9.4l1.7-2.3 1.6 1.4 2-2.6" stroke-linecap="round" stroke-linejoin="round"/>'
+  board:'<rect x="1.8" y="2.4" width="12.4" height="9.4" rx="1"/><path d="M4.4 12.6h7.2M6.2 9.4l1.7-2.3 1.6 1.4 2-2.6" stroke-linecap="round" stroke-linejoin="round"/>',
+  consolidated:'<rect x="2" y="2" width="9" height="9" rx="1"/><rect x="5" y="5" width="9" height="9" rx="1" fill="none"/>'
 };
 function icon(name){ return `<svg class="nav-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35">${ICONS[name]}</svg>`; }
 
@@ -462,6 +463,12 @@ function normalizeLiveOutlet(o){
 function normalizeLiveRecord(r){
   return { ...r, outletId:String(r.outletId), daysDelayed:0, submittedOn:null, dataQualityFlags:[] };
 }
+function normalizeLiveDepartment(d){
+  return { ...d, id:String(d.id) };
+}
+function normalizeLiveDepartmentRecord(r){
+  return { ...r, departmentId:String(r.departmentId) };
+}
 async function fetchLiveData(){
   const res = await fetch('/api/pnl');
   const json = await res.json();
@@ -470,6 +477,8 @@ async function fetchLiveData(){
     regions: json.regions,
     outlets: json.outlets.map(normalizeLiveOutlet),
     records: json.records.map(normalizeLiveRecord),
+    departments: (json.departments || []).map(normalizeLiveDepartment),
+    departmentRecords: (json.departmentRecords || []).map(normalizeLiveDepartmentRecord),
     generatedAt: json.generatedAt,
     notes: json.notes || [],
     source: json.source || 'odoo-live',
@@ -631,6 +640,7 @@ const NAV = [
   ['exceptions','Exception Management','Automated risk flags','exceptions'],
   ['insights','AI Finance Insights','Automated commentary','insights'],
   ['board','Monthly Board Pack','Executive narrative','board'],
+  ['consolidated','Consolidated P&L Statement','All departments, one statement','consolidated'],
 ];
 function renderNav(){
   const missing = recordsFor(state.period).filter(r=>r.reportingStatus==='Missing').length;
@@ -1133,6 +1143,97 @@ function boardSection(title, body){
   return `<div class="card" style="margin-bottom:12px;"><div class="card-head"><div class="card-title">${title}</div></div><div class="card-pad" style="font-size:12.5px; line-height:1.6;">${body}</div></div>`;
 }
 
+/* ============================== PAGE: CONSOLIDATED P&L ============================== */
+function renderConsolidated(){
+  const content = document.getElementById('content');
+  if(state.scale !== 'realistic' || !DATA || DATA.source === 'synthetic' || !(DATA.departments||[]).length){
+    content.innerHTML = `<div class="card card-pad" style="text-align:center; color:var(--muted);">
+      The Consolidated P&amp;L is built from live Odoo department data — switch the filter bar to <b>Club (Live Scope)</b> to view it.</div>`;
+    return;
+  }
+
+  const deptById = Object.fromEntries(DATA.departments.map(d=>[d.id,d]));
+  const rows = DATA.departmentRecords
+    .filter(r=>r.period===state.period)
+    .map(r=>({ dept: deptById[r.departmentId], r }))
+    .filter(x=>x.dept);
+
+  const totals = { actual: sumLines(rows.map(x=>x.r.actual)), budget: sumLines(rows.map(x=>x.r.budget)), py: sumLines(rows.map(x=>x.r.priorYear)) };
+  const unreconciled = rows.filter(x=>!x.dept.reconciled).map(x=>x.dept.name);
+
+  function deptRow(dept, r){
+    const a = r.actual, b = r.budget;
+    const rev = revenueOf(a), cogs = cogsOf(a), opexTotal = opexOf(a), eb = ebitdaOf(a);
+    const revB = revenueOf(b), ebB = ebitdaOf(b);
+    const v = pct(eb, ebB);
+    const flag = !dept.reconciled ? ` <span title="Live figure does not yet fully reconcile with the manual report for this department" style="cursor:help; color:var(--amber);">&#9888;</span>` : '';
+    return `<tr>
+      <td style="font-weight:700;">${dept.name}${flag}</td>
+      <td style="color:var(--muted);">${dept.category}</td>
+      <td class="num r">${fmtCur(rev)}</td>
+      <td class="num r">${fmtCur(cogs)}</td>
+      <td class="num r">${fmtCur(a.payroll+a.overtime+a.staffBenefits)}</td>
+      <td class="num r">${fmtCur(opexTotal-(a.payroll+a.overtime+a.staffBenefits))}</td>
+      <td class="num r" style="font-weight:800; color:${eb>=0?'var(--fairway)':'var(--clay)'}">${fmtCur(eb)}</td>
+      <td class="num r" style="color:var(--muted);">${fmtCur(ebB)}</td>
+      <td class="num r" style="font-weight:700; color:${v>=0?'var(--fairway)':'var(--clay)'}">${fmtSignedPct(v)}</td>
+      <td class="num r">${fmtCur(a.depreciation)}</td>
+      <td class="num r" style="font-weight:700;">${fmtCur(netOf(a))}</td>
+    </tr>`;
+  }
+
+  const chartRows = rows.map(x=>({ label: x.dept.name, value: ebitdaOf(x.r.actual) }))
+    .sort((a,b)=>b.value-a.value);
+  const chartColors = chartRows.map(r=> r.value>=0 ? COLOR.fairway : COLOR.clay);
+
+  content.innerHTML = `
+    <div class="card card-pad" style="margin-bottom:14px; border-color:var(--gold);">
+      <div class="card-title">BAHRAIN INTERNATIONAL GOLF COURSE COMPANY</div>
+      <div class="card-desc">Consolidated Profit &amp; Loss Statement · ${periodLabel(state.period)} · ${rows.length} departments</div>
+      ${unreconciled.length ? `<p style="font-size:11px; color:var(--amber); margin-top:8px;">&#9888; Not yet fully reconciled with the manual report: ${unreconciled.join(', ')}. Figures shown are the best available live estimate — see the info note at the top of the page for why.</p>` : ''}
+    </div>
+
+    <div class="grid g-4" style="margin-bottom:14px;">
+      ${statTile('Total Revenue', fmtCur(revenueOf(totals.actual)), 'var(--navy)')}
+      ${statTile('Gross Profit (EBITDA)', fmtCur(ebitdaOf(totals.actual)), ebitdaOf(totals.actual)>=0?'var(--fairway)':'var(--clay)')}
+      ${statTile('Net Profit', fmtCur(netOf(totals.actual)), netOf(totals.actual)>=0?'var(--fairway)':'var(--clay)')}
+      ${statTile('vs Budget (EBITDA)', fmtSignedPct(pct(ebitdaOf(totals.actual), ebitdaOf(totals.budget))), pct(ebitdaOf(totals.actual),ebitdaOf(totals.budget))>=0?'var(--fairway)':'var(--clay)')}
+    </div>
+
+    <div class="card" style="margin-bottom:14px;">
+      <div class="card-head"><div class="card-title">Gross Profit (EBITDA) by Department</div><div class="card-desc">${periodLabel(state.period)}</div></div>
+      <div class="card-pad">${barChart(chartRows.map((r,i)=>({label:r.label, value:Math.abs(r.value), color:chartColors[i]})), 900, 260)}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div class="card-title">Consolidated P&amp;L by Department</div><div class="card-desc">All 18 departments · Actual for ${periodLabel(state.period)}</div></div>
+      <div class="card-pad tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Department</th><th>Category</th><th class="r">Revenue</th><th class="r">COS</th>
+            <th class="r">Payroll</th><th class="r">Opex</th><th class="r">Gross Profit</th>
+            <th class="r">Budget GP</th><th class="r">Var %</th><th class="r">Depreciation</th><th class="r">Net Profit</th>
+          </tr></thead>
+          <tbody>
+            ${rows.map(x=>deptRow(x.dept, x.r)).join('')}
+            <tr style="background:var(--surface-2); font-weight:800;">
+              <td colspan="2">TOTAL REVENUE / COMPANY</td>
+              <td class="num r">${fmtCur(revenueOf(totals.actual))}</td>
+              <td class="num r">${fmtCur(cogsOf(totals.actual))}</td>
+              <td class="num r">${fmtCur(totals.actual.payroll+totals.actual.overtime+totals.actual.staffBenefits)}</td>
+              <td class="num r">${fmtCur(opexOf(totals.actual)-(totals.actual.payroll+totals.actual.overtime+totals.actual.staffBenefits))}</td>
+              <td class="num r" style="color:${ebitdaOf(totals.actual)>=0?'var(--fairway)':'var(--clay)'}">${fmtCur(ebitdaOf(totals.actual))}</td>
+              <td class="num r">${fmtCur(ebitdaOf(totals.budget))}</td>
+              <td class="num r">${fmtSignedPct(pct(ebitdaOf(totals.actual),ebitdaOf(totals.budget)))}</td>
+              <td class="num r">${fmtCur(totals.actual.depreciation)}</td>
+              <td class="num r">${fmtCur(netOf(totals.actual))}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
 /* ============================== ROUTER ============================== */
 const PAGES = { overview:{fn:renderOverview,label:'Executive Overview',sub:'Group KPIs & trends'},
   tower:{fn:renderTower,label:'Reporting Control Tower',sub:'Completeness & compliance'},
@@ -1144,7 +1245,8 @@ const PAGES = { overview:{fn:renderOverview,label:'Executive Overview',sub:'Grou
   health:{fn:renderHealth,label:'Outlet Health Score',sub:'0–100 composite score'},
   exceptions:{fn:renderExceptions,label:'Exception Management',sub:'Automated risk flags'},
   insights:{fn:renderInsights,label:'AI Finance Insights',sub:'Automated commentary'},
-  board:{fn:renderBoard,label:'Monthly Board Pack',sub:'Executive narrative'} };
+  board:{fn:renderBoard,label:'Monthly Board Pack',sub:'Executive narrative'},
+  consolidated:{fn:renderConsolidated,label:'Consolidated P&L Statement',sub:'All departments, one statement'} };
 
 function renderAll(){
   renderNav(); renderFilters();

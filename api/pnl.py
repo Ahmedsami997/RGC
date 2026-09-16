@@ -82,6 +82,37 @@ OUTLETS = [
 OUTLET_IDS = [o['id'] for o in OUTLETS]
 REGION = {'id': 'rgn-bh-riffa', 'name': 'Riffa – Main Campus', 'country': 'Bahrain'}
 
+# The 18 departments making up the real "Consolidated Profit & Loss
+# Statement" — verified against the finance team's manual Aug-2026 Excel
+# report. "Golf Operations" splits POS revenue (analytic "Golf Manager")
+# from payroll/opex (analytic "Golf Operations") in Odoo, so both ids are
+# summed to match the one department line finance reports.
+DEPARTMENTS = [
+    {'id': 'dept-gcm', 'name': 'Golf Course Maintenance', 'category': 'Golf Operations', 'analyticIds': [63]},
+    {'id': 'dept-ro', 'name': 'RO Plant', 'category': 'Golf Operations', 'analyticIds': [69]},
+    {'id': 'dept-landscape', 'name': 'Landscape', 'category': 'Golf Operations', 'analyticIds': [67]},
+    {'id': 'dept-ga', 'name': 'G&A (Administration)', 'category': 'Corporate', 'analyticIds': [51]},
+    {'id': 'dept-cartfleet', 'name': 'Cart Fleet', 'category': 'Golf Operations', 'analyticIds': [54]},
+    {'id': 'dept-facility', 'name': 'Facility', 'category': 'Corporate', 'analyticIds': [60]},
+    {'id': 'dept-membership', 'name': 'Membership', 'category': 'Membership', 'analyticIds': [68]},
+    {'id': 'dept-otherpartner', 'name': 'Other / Partnership', 'category': 'Corporate', 'analyticIds': [128]},
+    {'id': 'dept-fb', 'name': 'F&B (Shared)', 'category': 'Food & Beverage', 'analyticIds': [57]},
+    {'id': 'dept-cafet', 'name': 'Cafe T', 'category': 'Food & Beverage', 'analyticIds': [74]},
+    {'id': 'dept-links', 'name': 'Links', 'category': 'Food & Beverage', 'analyticIds': [77]},
+    {'id': 'dept-banquet', 'name': 'Banquet', 'category': 'Banqueting & Events', 'analyticIds': [193]},
+    {'id': 'dept-repartee', 'name': 'Repartee', 'category': 'Food & Beverage', 'analyticIds': [75]},
+    {'id': 'dept-memberlounge', 'name': 'Member Lounge', 'category': 'Food & Beverage', 'analyticIds': [59]},
+    {'id': 'dept-slice', 'name': 'Slice', 'category': 'Food & Beverage', 'analyticIds': [73]},
+    {'id': 'dept-bcart', 'name': 'B Cart', 'category': 'Food & Beverage', 'analyticIds': [132]},
+    {'id': 'dept-golfops', 'name': 'Golf Operations', 'category': 'Golf Operations', 'analyticIds': [64, 195]},
+    {'id': 'dept-countryclub', 'name': 'Country Club', 'category': 'Golf Operations', 'analyticIds': [4]},
+]
+DEPARTMENT_ANALYTIC_IDS = sorted({aid for d in DEPARTMENTS for aid in d['analyticIds']})
+ALL_ANALYTIC_IDS = sorted(set(OUTLET_IDS) | set(DEPARTMENT_ANALYTIC_IDS))
+# Departments whose live Odoo total does not yet fully reconcile with the
+# manual report (flagged in the UI rather than silently shown as exact).
+UNRECONCILED_DEPARTMENTS = {'dept-countryclub', 'dept-fb', 'dept-golfops'}
+
 PNL_KEYS = [
     'foodSales', 'beverageSales', 'deliverySales', 'otherRevenue',
     'foodCost', 'beverageCost', 'packagingCost',
@@ -214,7 +245,7 @@ def fetch_actual_month(odoo, date_from, date_to):
     accounts = odoo.execute_kw('account.account', 'read', [account_ids], {'fields': ['code', 'name', 'account_type']}) if account_ids else []
     acct_by_id = {a['id']: a for a in accounts}
 
-    result = {o['id']: empty_line() for o in OUTLETS}
+    result = {aid: empty_line() for aid in ALL_ANALYTIC_IDS}
     for line in lines:
         dist = line['analytic_distribution'] or {}
         acc = acct_by_id.get(line['account_id'][0])
@@ -237,23 +268,31 @@ def fetch_budget_month(odoo, date_from, date_to):
     lines = odoo.execute_kw(
         'crossovered.budget.lines', 'search_read',
         [[
-            ['analytic_account_id', 'in', OUTLET_IDS],
+            ['analytic_account_id', 'in', ALL_ANALYTIC_IDS],
             ['date_from', '<=', date_to], ['date_to', '>=', date_from],
         ]],
         {'fields': ['analytic_account_id', 'general_budget_id', 'planned_amount']},
     )
-    result = {o['id']: empty_line() for o in OUTLETS}
+    result = {aid: empty_line() for aid in ALL_ANALYTIC_IDS}
     for line in lines:
         if not line['analytic_account_id'] or not line['general_budget_id']:
             continue
-        outlet_id = line['analytic_account_id'][0]
-        if outlet_id not in result:
+        analytic_id = line['analytic_account_id'][0]
+        if analytic_id not in result:
             continue
         bucket = route_budget_line(line['general_budget_id'][1])
         if not bucket:
             continue
-        result[outlet_id][bucket] += abs(line['planned_amount'])
+        result[analytic_id][bucket] += abs(line['planned_amount'])
     return result
+
+
+def sum_lines(lines):
+    out = empty_line()
+    for line in lines:
+        for k in PNL_KEYS:
+            out[k] += line[k]
+    return out
 
 
 def build_period(odoo, y, m, today):
@@ -269,7 +308,7 @@ def build_period(odoo, y, m, today):
     try:
         prior_year = fetch_actual_month(odoo, py_df, py_dt)
     except Exception:
-        prior_year = {o['id']: empty_line() for o in OUTLETS}
+        prior_year = {aid: empty_line() for aid in ALL_ANALYTIC_IDS}
 
     if is_current:
         elapsed = min(today.day, days_in_month(y, m))
@@ -293,7 +332,20 @@ def build_period(odoo, y, m, today):
             'actual': a, 'budget': b, 'forecast': forecast, 'priorYear': p,
             'reportingStatus': status, 'hasActivity': has_activity,
         })
-    return records
+
+    department_records = []
+    for d in DEPARTMENTS:
+        d_actual = sum_lines([actual[aid] for aid in d['analyticIds']])
+        d_budget = sum_lines([budget[aid] for aid in d['analyticIds']])
+        d_prior = sum_lines([prior_year[aid] for aid in d['analyticIds']])
+        d_forecast = {k: round(v * run_rate, 3) for k, v in d_actual.items()} if is_current else dict(d_actual)
+        department_records.append({
+            'departmentId': d['id'], 'period': period_key,
+            'actual': d_actual, 'budget': d_budget, 'forecast': d_forecast, 'priorYear': d_prior,
+            'reconciled': d['id'] not in UNRECONCILED_DEPARTMENTS,
+        })
+
+    return records, department_records
 
 
 def build_dataset():
@@ -302,10 +354,13 @@ def build_dataset():
     periods = trailing_periods(N_MONTHS)
 
     records = []
+    department_records = []
     with ThreadPoolExecutor(max_workers=min(8, len(periods))) as pool:
         futures = [pool.submit(build_period, odoo, y, m, today) for (y, m) in periods]
         for fut in futures:
-            records.extend(fut.result())
+            recs, dept_recs = fut.result()
+            records.extend(recs)
+            department_records.extend(dept_recs)
 
     return {
         'regions': [REGION],
@@ -316,6 +371,11 @@ def build_dataset():
         ],
         'periods': [f'{y:04d}-{m:02d}' for (y, m) in periods],
         'records': records,
+        'departments': [
+            {'id': d['id'], 'name': d['name'], 'category': d['category'], 'reconciled': d['id'] not in UNRECONCILED_DEPARTMENTS}
+            for d in DEPARTMENTS
+        ],
+        'departmentRecords': department_records,
         'generatedAt': __import__('time').strftime('%Y-%m-%dT%H:%M:%S'),
         'source': 'odoo-live',
         'notes': [
@@ -332,6 +392,12 @@ def build_dataset():
             'outlet are included. Shared/overhead costs not analytically allocated to a '
             'specific outlet will not appear here, so outlet-level margins can run higher '
             'than a fully-loaded P&L.',
+            'The Consolidated P&L was checked line-by-line against the finance team\'s '
+            'manual Aug-2026 report: 15 of 18 departments reconcile to within a small '
+            'rounding/audit-adjustment tolerance. "Golf Operations", "Country Club" and '
+            '"F&B (Shared)" do not yet fully reconcile (flagged in that page) — their '
+            'manual report likely combines analytic tags or GL accounts this live feed '
+            'does not yet know how to split the same way.',
         ],
     }
 
