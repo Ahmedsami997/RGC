@@ -451,7 +451,7 @@ function generateInsights(records, outletById){
 }
 
 /* ============================== STATE ============================== */
-const state = { tab:'overview', period: CURRENT_PERIOD, regionId:'all', category:'all', scale:'realistic', selectedOutlet:null, consolidatedDept:'consolidated' };
+const state = { tab:'overview', period: CURRENT_PERIOD, regionId:'all', category:'all', scale:'realistic', selectedOutlet:null, consolidatedDept:'consolidated', hideZeroLines:true };
 let DATA = null;
 
 function normalizeLiveOutlet(o){
@@ -1236,10 +1236,16 @@ function renderConsolidated(){
     <div class="card" style="margin:14px 0;">
       <div class="card-head" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
         <div><div class="card-title">Full Statement</div><div class="card-desc">Every GL account, same layout as the finance team's Excel report</div></div>
-        <select id="consolidatedDeptSelect" style="height:30px; border-radius:7px; border:1px solid var(--line); padding:2px 8px; font-size:12px; font-weight:600;">
-          <option value="consolidated">Consolidated (All Departments)</option>
-          ${DATA.departments.map(d=>`<option value="${d.id}" ${state.consolidatedDept===d.id?'selected':''}>${d.name}</option>`).join('')}
-        </select>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <label style="display:flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600; color:var(--muted); cursor:pointer;">
+            <input type="checkbox" id="hideZeroLines" ${state.hideZeroLines?'checked':''} style="width:14px; height:14px;">
+            Hide lines at 0
+          </label>
+          <select id="consolidatedDeptSelect" style="height:30px; border-radius:7px; border:1px solid var(--line); padding:2px 8px; font-size:12px; font-weight:600;">
+            <option value="consolidated">Consolidated (All Departments)</option>
+            ${DATA.departments.map(d=>`<option value="${d.id}" ${state.consolidatedDept===d.id?'selected':''}>${d.name}</option>`).join('')}
+          </select>
+        </div>
       </div>
       <div class="card-pad" id="detailRoot">${loadingBanner('Loading full statement…')}</div>
     </div>
@@ -1251,6 +1257,10 @@ function renderConsolidated(){
 
   document.getElementById('consolidatedDeptSelect').addEventListener('change', e=>{
     state.consolidatedDept = e.target.value;
+    renderConsolidatedDetail();
+  });
+  document.getElementById('hideZeroLines').addEventListener('change', e=>{
+    state.hideZeroLines = e.target.checked;
     renderConsolidatedDetail();
   });
   renderConsolidatedDetail();
@@ -1317,10 +1327,11 @@ function summaryLine(label, totals, big){
 function renderStatementHtml(data){
   const unrec = !data.departmentId || data.departmentId==='consolidated' ? '' :
     (!DATA.departments.find(d=>d.id===data.departmentId)?.reconciled ? `<p style="font-size:11px; color:var(--amber); margin:0 0 10px;">&#9888; ${data.departmentName} does not yet fully reconcile with the manual report — see the info note above.</p>` : '');
+  const hiddenCount = data.sections.reduce((n,s)=>n+s.lines.filter(l=>l.actual===0 && l.budget===0 && l.priorYear===0).length, 0);
   const sectionsHtml = data.sections.map(s=>{
-    const label = s.name.charAt(0)+s.name.slice(1).toLowerCase();
+    const visibleLines = state.hideZeroLines ? s.lines.filter(l=>l.actual!==0 || l.budget!==0 || l.priorYear!==0) : s.lines;
     return `<tr><td colspan="6" class="section-label">${s.name}</td></tr>
-      ${s.lines.map(statementRow).join('')}
+      ${visibleLines.map(statementRow).join('')}
       ${statementSectionTotalRow('TOTAL '+s.name, s.totals)}`;
   }).join('');
   return `
@@ -1328,6 +1339,7 @@ function renderStatementHtml(data){
     <div class="grid g-3" style="margin-bottom:12px;">
       ${summaryLine('Gross Profit / Loss', data.grossProfit, true)}
     </div>
+    ${state.hideZeroLines && hiddenCount>0 ? `<p style="font-size:11px; color:var(--muted); margin:0 0 8px;">${hiddenCount} account${hiddenCount===1?'':'s'} with no activity, budget or prior year hidden — untick "Hide lines at 0" to see everything.</p>` : ''}
     <div class="tbl-wrap" style="max-height:560px; overflow-y:auto; border:1px solid var(--line); border-radius:8px; margin-bottom:14px;">
       <table>
         <thead style="position:sticky; top:0; background:var(--surface); z-index:1;"><tr>
