@@ -17,7 +17,7 @@ if (Get-Service -Name $name -ErrorAction SilentlyContinue) {
 }
 
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-Copy-Item -Path (Join-Path $PSScriptRoot "*") -Destination $InstallDir -Recurse -Force -Exclude "Install-Server.ps1"
+Copy-Item -Path (Join-Path $PSScriptRoot "*") -Destination $InstallDir -Recurse -Force -Exclude "Install-Server.ps1","Configure-Server.ps1","AGENT-KEY.txt","*.bak"
 
 $exe = Join-Path $InstallDir "RGC.Server.exe"
 if (-not (Get-Service -Name $name -ErrorAction SilentlyContinue)) {

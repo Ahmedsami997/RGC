@@ -18,4 +18,5 @@ dotnet publish "$root\src\RGC.ClientAgent\RGC.ClientAgent.csproj"   @common -p:P
 
 Copy-Item "$PSScriptRoot\Install-Agent.ps1"  "$out\Agent\"  -Force
 Copy-Item "$PSScriptRoot\Install-Server.ps1" "$out\Server\" -Force
+Copy-Item "$PSScriptRoot\Configure-Server.ps1" "$out\Server\" -Force
 Write-Host "Done. Packages are in $out" -ForegroundColor Green
