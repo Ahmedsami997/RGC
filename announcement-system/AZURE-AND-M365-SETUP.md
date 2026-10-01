@@ -100,7 +100,7 @@ Go to **https://portal.azure.com**.
 
      | Name | Value |
      |---|---|
-     | `Jwt__SigningKey` | A long random text of 48+ characters. To generate one in PowerShell: `[Convert]::ToBase64String((1..48 \| % {Get-Random -Max 256}))` |
+     | `Jwt__SigningKey` | A long random text of 48+ characters. To generate one in PowerShell: `$b = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b)` |
      | `Entra__TenantId` | your Directory (tenant) ID |
      | `Entra__ClientId` | your Application (client) ID |
      | `Authentication__AllowAgentKey` | `false` |
