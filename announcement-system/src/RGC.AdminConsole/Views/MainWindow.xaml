@@ -1,0 +1,412 @@
+<Window x:Class="RGC.AdminConsole.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:RGC.AdminConsole.ViewModels"
+        xmlns:shared="clr-namespace:RGC.Shared;assembly=RGC.Shared"
+        Title="RGC – Announcements Admin Console" Width="1280" Height="800" MinWidth="1080" MinHeight="640"
+        WindowStartupLocation="CenterScreen" FontFamily="{StaticResource Brand.Font}"
+        Background="{StaticResource Brand.Paper}"
+        Icon="pack://application:,,,/RGC.Branding;component/Assets/rgc-icon.png">
+    <Window.Resources>
+        <Style x:Key="PageTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="24" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="{StaticResource Brand.Ink}" />
+        </Style>
+        <Style x:Key="PageSubtitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="{StaticResource Brand.Muted}" />
+            <Setter Property="Margin" Value="0,2,0,20" />
+        </Style>
+        <Style x:Key="StatValue" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="30" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="{StaticResource Brand.Ink}" />
+        </Style>
+
+        <!-- Small coloured pill showing a priority -->
+        <DataTemplate x:Key="PriorityPill">
+            <Border CornerRadius="10" Padding="9,2" HorizontalAlignment="Left"
+                    Background="{Binding Priority, Converter={StaticResource PriorityBrush}, ConverterParameter=soft}">
+                <TextBlock Text="{Binding Priority, Converter={StaticResource PriorityLabel}}" FontSize="11" FontWeight="Bold"
+                           Foreground="{Binding Priority, Converter={StaticResource PriorityBrush}}" />
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="240" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- ============================== Sidebar -->
+        <Border Grid.RowSpan="2" Background="{StaticResource Brand.Navy}">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="22,26,22,30">
+                    <Image Source="{StaticResource Brand.Logo}" Height="40" RenderOptions.BitmapScalingMode="HighQuality" />
+                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="RGC" Foreground="White" FontSize="22" FontWeight="Bold" />
+                        <TextBlock Text="Announcements" Foreground="{StaticResource Brand.OnNavyMuted}" FontSize="12" />
+                    </StackPanel>
+                </StackPanel>
+
+                <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource Brand.NavyLight}" BorderThickness="0,1,0,0" Padding="22,16">
+                    <StackPanel>
+                        <TextBlock Text="SIGNED IN AS" Foreground="{StaticResource Brand.OnNavyMuted}" FontSize="10" FontWeight="Bold" />
+                        <TextBlock Text="{Binding AdminName}" Foreground="White" FontSize="14" FontWeight="SemiBold" Margin="0,2,0,0" />
+                        <TextBlock Text="{Binding ServerUrl}" Foreground="{StaticResource Brand.OnNavyMuted}" FontSize="11"
+                                   TextTrimming="CharacterEllipsis" Margin="0,2,0,12" />
+                        <Button Content="Sign out" Command="{Binding SignOutCommand}" Style="{StaticResource Button.Base}"
+                                Background="{StaticResource Brand.NavyLight}" BorderBrush="{StaticResource Brand.NavyLight}"
+                                Foreground="White" Padding="12,7" />
+                    </StackPanel>
+                </Border>
+
+                <StackPanel>
+                    <RadioButton Style="{StaticResource NavItem}" Tag="&#xE7F4;" Content="Dashboard" IsChecked="{Binding IsDashboard}" />
+                    <RadioButton Style="{StaticResource NavItem}" Tag="&#xE789;" Content="New announcement" IsChecked="{Binding IsCompose}" />
+                    <RadioButton Style="{StaticResource NavItem}" Tag="&#xE81C;" Content="History &amp; status" IsChecked="{Binding IsHistory}" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ============================== Dashboard -->
+        <Grid Grid.Column="1" Margin="32,28,32,16" Visibility="{Binding IsDashboard, Converter={StaticResource BoolToVis}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+                    <Button Content="Refresh" Command="{Binding RefreshCommand}" Style="{StaticResource Button.Secondary}" Margin="0,0,10,0" />
+                    <Button Content="New announcement" Command="{Binding GoComposeCommand}" Style="{StaticResource Button.Primary}" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Text="Connected computers" Style="{StaticResource PageTitle}" />
+                    <TextBlock Text="Every PC running the RGC Agent. Online PCs receive announcements instantly." Style="{StaticResource PageSubtitle}" />
+                </StackPanel>
+            </DockPanel>
+
+            <UniformGrid Grid.Row="1" Columns="4" Margin="0,0,0,20">
+                <Border Style="{StaticResource Card}" Margin="0,0,12,0">
+                    <StackPanel>
+                        <TextBlock Text="ONLINE NOW" Style="{StaticResource Text.Label}" />
+                        <TextBlock Text="{Binding OnlineClients}" Style="{StaticResource StatValue}" Foreground="{StaticResource Brand.GreenDark}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,12,0">
+                    <StackPanel>
+                        <TextBlock Text="OFFLINE" Style="{StaticResource Text.Label}" />
+                        <TextBlock Text="{Binding OfflineClients}" Style="{StaticResource StatValue}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,12,0">
+                    <StackPanel>
+                        <TextBlock Text="REGISTERED PCS" Style="{StaticResource Text.Label}" />
+                        <TextBlock Text="{Binding TotalClients}" Style="{StaticResource StatValue}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="ANNOUNCEMENTS TODAY" Style="{StaticResource Text.Label}" />
+                        <TextBlock Text="{Binding AnnouncementsToday}" Style="{StaticResource StatValue}" Foreground="{StaticResource Brand.Gold}" />
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <Border Grid.Row="2" Style="{StaticResource Card}" Padding="0">
+                <DockPanel>
+                    <Border DockPanel.Dock="Top" Padding="16,12" BorderBrush="{StaticResource Brand.Line}" BorderThickness="0,0,0,1">
+                        <DockPanel>
+                            <TextBlock Text="Search" VerticalAlignment="Center" Foreground="{StaticResource Brand.Muted}" Margin="0,0,10,0" />
+                            <TextBox Text="{Binding ClientFilter, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Input.Text}"
+                                     Width="320" HorizontalAlignment="Left" ToolTip="Filter by computer, user or IP" />
+                        </DockPanel>
+                    </Border>
+                    <DataGrid ItemsSource="{Binding ClientsView}">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="STATUS" Width="110">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Ellipse Width="10" Height="10" Fill="{Binding IsOnline, Converter={StaticResource OnlineBrush}}" Margin="0,0,8,0" />
+                                            <TextBlock>
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text" Value="Offline" />
+                                                        <Setter Property="Foreground" Value="{StaticResource Brand.Muted}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsOnline}" Value="True">
+                                                                <Setter Property="Text" Value="Online" />
+                                                                <Setter Property="Foreground" Value="{StaticResource Brand.GreenDark}" />
+                                                                <Setter Property="FontWeight" Value="SemiBold" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="COMPUTER" Binding="{Binding MachineName}" Width="*" FontWeight="SemiBold" />
+                            <DataGridTextColumn Header="USER" Binding="{Binding UserName}" Width="*" />
+                            <DataGridTextColumn Header="IP ADDRESS" Binding="{Binding IpAddress}" Width="130" />
+                            <DataGridTextColumn Header="AGENT" Binding="{Binding AgentVersion}" Width="80" />
+                            <DataGridTextColumn Header="LAST SEEN" Binding="{Binding LastSeenUtc, Converter={StaticResource LocalTime}}" Width="170" />
+                            <DataGridTextColumn Header="FIRST SEEN" Binding="{Binding FirstSeenUtc, Converter={StaticResource LocalTime}, ConverterParameter='dd MMM yyyy'}" Width="120" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <!-- ============================== Compose -->
+        <Grid Grid.Column="1" Margin="32,28,32,16" Visibility="{Binding IsCompose, Converter={StaticResource BoolToVis}}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="24" />
+                <ColumnDefinition Width="420" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.ColumnSpan="3">
+                <TextBlock Text="New announcement" Style="{StaticResource PageTitle}" />
+                <TextBlock Text="Broadcast a message to every computer. It appears immediately as a popup that stays on top until read." Style="{StaticResource PageSubtitle}" />
+            </StackPanel>
+
+            <Border Grid.Row="1" Style="{StaticResource Card}">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding TitleCount}" Style="{StaticResource Text.Label}" FontWeight="Normal" />
+                            <TextBlock Text="TITLE" Style="{StaticResource Text.Label}" />
+                        </DockPanel>
+                        <TextBox Text="{Binding ComposeTitle, UpdateSourceTrigger=PropertyChanged}" MaxLength="200"
+                                 Style="{StaticResource Input.Text}" FontSize="16" Margin="0,0,0,18" />
+
+                        <TextBlock Text="PRIORITY" Style="{StaticResource Text.Label}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+                            <RadioButton x:Name="PriNormal" Style="{StaticResource PriorityOption}" GroupName="Priority"
+                                         Tag="{StaticResource Priority.Normal}" Checked="Priority_Checked">
+                                <StackPanel>
+                                    <TextBlock Text="Normal" FontWeight="Bold" Foreground="{StaticResource Priority.Normal}" />
+                                    <TextBlock Text="General information" FontSize="11" Foreground="{StaticResource Brand.Muted}" />
+                                </StackPanel>
+                            </RadioButton>
+                            <RadioButton x:Name="PriImportant" Style="{StaticResource PriorityOption}" GroupName="Priority"
+                                         Tag="{StaticResource Priority.Important}" Checked="Priority_Checked">
+                                <StackPanel>
+                                    <TextBlock Text="Important" FontWeight="Bold" Foreground="{StaticResource Priority.Important}" />
+                                    <TextBlock Text="Needs attention today" FontSize="11" Foreground="{StaticResource Brand.Muted}" />
+                                </StackPanel>
+                            </RadioButton>
+                            <RadioButton x:Name="PriCritical" Style="{StaticResource PriorityOption}" GroupName="Priority"
+                                         Tag="{StaticResource Priority.Critical}" Checked="Priority_Checked">
+                                <StackPanel>
+                                    <TextBlock Text="Critical" FontWeight="Bold" Foreground="{StaticResource Priority.Critical}" />
+                                    <TextBlock Text="Urgent / safety" FontSize="11" Foreground="{StaticResource Brand.Muted}" />
+                                </StackPanel>
+                            </RadioButton>
+                        </StackPanel>
+
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding MessageCount}" Style="{StaticResource Text.Label}" FontWeight="Normal" />
+                            <TextBlock Text="MESSAGE" Style="{StaticResource Text.Label}" />
+                        </DockPanel>
+                    </StackPanel>
+
+                    <StackPanel DockPanel.Dock="Bottom" Margin="0,16,0,0">
+                        <TextBlock Text="{Binding RecipientSummary}" Foreground="{StaticResource Brand.Muted}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,12" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="Clear" Command="{Binding ClearComposeCommand}" Style="{StaticResource Button.Secondary}" Margin="0,0,10,0" />
+                            <Button Content="Broadcast to all PCs" Command="{Binding SendCommand}" Style="{StaticResource Button.Primary}" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <TextBox Text="{Binding ComposeMessage, UpdateSourceTrigger=PropertyChanged}" MaxLength="8000"
+                             Style="{StaticResource Input.Text}" AcceptsReturn="True" TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top" MinHeight="160" />
+                </DockPanel>
+            </Border>
+
+            <!-- Live preview of the popup -->
+            <StackPanel Grid.Row="1" Grid.Column="2">
+                <TextBlock Text="PREVIEW ON EMPLOYEE PCS" Style="{StaticResource Text.Label}" />
+                <Border CornerRadius="8" BorderBrush="{StaticResource Brand.Line}" BorderThickness="1" ClipToBounds="True">
+                    <StackPanel>
+                        <Grid Background="{StaticResource Brand.Navy}" Height="48">
+                            <StackPanel Orientation="Horizontal" Margin="14,0" VerticalAlignment="Center">
+                                <Image Source="{StaticResource Brand.Logo}" Height="24" />
+                                <TextBlock Text="RGC" Foreground="White" FontWeight="Bold" FontSize="15" Margin="8,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <Border HorizontalAlignment="Right" Margin="0,0,14,0" VerticalAlignment="Center" CornerRadius="10" Padding="9,2"
+                                    Background="{Binding ComposePriority, Converter={StaticResource PriorityBrush}}">
+                                <TextBlock Text="{Binding ComposePriority, Converter={StaticResource PriorityLabel}}" Foreground="White" FontSize="10" FontWeight="Bold" />
+                            </Border>
+                        </Grid>
+                        <Border Height="4" Background="{Binding ComposePriority, Converter={StaticResource PriorityBrush}}" />
+                        <StackPanel Background="White" Margin="0">
+                            <StackPanel Margin="20,16,20,12">
+                                <TextBlock FontSize="10" FontWeight="Bold" Foreground="{StaticResource Brand.Gold}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="IMPORTANT COMPANY ANNOUNCEMENT" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ComposePriority}" Value="{x:Static shared:AnnouncementPriority.Critical}">
+                                                    <Setter Property="Text" Value="CRITICAL COMPANY ANNOUNCEMENT" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="{Binding ComposeTitle}" FontSize="18" FontWeight="Bold" TextWrapping="Wrap" Margin="0,6,0,10"
+                                           Foreground="{StaticResource Brand.Ink}" />
+                                <TextBlock Text="{Binding ComposeMessage}" FontSize="12" TextWrapping="Wrap" MaxHeight="220"
+                                           TextTrimming="CharacterEllipsis" Foreground="{StaticResource Brand.Ink}" />
+                            </StackPanel>
+                        </StackPanel>
+                        <Border Background="{StaticResource Brand.Paper}" Padding="20,10" BorderBrush="{StaticResource Brand.Line}" BorderThickness="0,1,0,0">
+                            <TextBlock Text="You can close this message in 10 seconds..." FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{StaticResource Brand.Ink}" />
+                        </Border>
+                    </StackPanel>
+                </Border>
+                <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Brand.Muted}" Margin="0,10,0,0"
+                           Text="Employees cannot close the popup (no X button, Alt+F4 disabled) until the countdown ends and they have scrolled to the end of the message. Their acknowledgement time is recorded." />
+            </StackPanel>
+        </Grid>
+
+        <!-- ============================== History & status -->
+        <Grid Grid.Column="1" Margin="32,28,32,16" Visibility="{Binding IsHistory, Converter={StaticResource BoolToVis}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="2*" />
+                <RowDefinition Height="16" />
+                <RowDefinition Height="3*" />
+            </Grid.RowDefinitions>
+            <DockPanel>
+                <Button DockPanel.Dock="Right" VerticalAlignment="Top" Content="Refresh" Command="{Binding RefreshCommand}" Style="{StaticResource Button.Secondary}" />
+                <StackPanel>
+                    <TextBlock Text="History &amp; delivery status" Style="{StaticResource PageTitle}" />
+                    <TextBlock Text="Every announcement ever sent. Select one to see delivery and read status per computer." Style="{StaticResource PageSubtitle}" />
+                </StackPanel>
+            </DockPanel>
+
+            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="0">
+                <DataGrid ItemsSource="{Binding History}" SelectedItem="{Binding SelectedAnnouncement}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="SENT" Binding="{Binding CreatedAtUtc, Converter={StaticResource LocalTime}, ConverterParameter='dd MMM yyyy HH:mm'}" Width="150" />
+                        <DataGridTemplateColumn Header="PRIORITY" Width="110" CellTemplate="{StaticResource PriorityPill}" />
+                        <DataGridTextColumn Header="TITLE" Binding="{Binding Title}" Width="*" FontWeight="SemiBold" />
+                        <DataGridTextColumn Header="SENT BY" Binding="{Binding CreatedBy}" Width="120" />
+                        <DataGridTextColumn Header="DELIVERED" Binding="{Binding DeliveredText}" Width="100" />
+                        <DataGridTemplateColumn Header="READ" Width="160">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding AcknowledgedText}" Width="60" />
+                                        <ProgressBar Width="80" Height="6" Maximum="100" Value="{Binding ReadPercent, Mode=OneWay}"
+                                                     Foreground="{StaticResource Brand.GreenDark}" Background="{StaticResource Brand.Line}" BorderThickness="0" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Border>
+
+            <Border Grid.Row="3" Style="{StaticResource Card}" Padding="0">
+                <Grid>
+                    <TextBlock Text="Select an announcement above to see who received and read it."
+                               HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource Brand.Muted}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasSelection}" Value="False">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <Grid Visibility="{Binding HasSelection, Converter={StaticResource BoolToVis}}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="340" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Message details -->
+                        <Border BorderBrush="{StaticResource Brand.Line}" BorderThickness="0,0,1,0" Padding="18">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" DataContext="{Binding SelectedAnnouncement}">
+                                <StackPanel>
+                                    <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource PriorityPill}" HorizontalAlignment="Left" />
+                                    <TextBlock Text="{Binding Title}" FontSize="17" FontWeight="Bold" TextWrapping="Wrap" Margin="0,10,0,4" Foreground="{StaticResource Brand.Ink}" />
+                                    <TextBlock FontSize="12" Foreground="{StaticResource Brand.Muted}" Margin="0,0,0,12">
+                                        <Run Text="{Binding CreatedAtUtc, Converter={StaticResource LocalTime}, Mode=OneWay}" />
+                                        <Run Text=" · " />
+                                        <Run Text="{Binding CreatedBy, Mode=OneWay}" />
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding Message}" TextWrapping="Wrap" FontSize="13" Foreground="{StaticResource Brand.Ink}" />
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Border>
+
+                        <!-- Recipients -->
+                        <DockPanel Grid.Column="1">
+                            <Border DockPanel.Dock="Top" Padding="16,10" BorderBrush="{StaticResource Brand.Line}" BorderThickness="0,0,0,1">
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Content="Export CSV" Command="{Binding ExportRecipientsCommand}"
+                                            Style="{StaticResource Button.Secondary}" Padding="12,6" />
+                                    <TextBlock Text="Show" VerticalAlignment="Center" Foreground="{StaticResource Brand.Muted}" Margin="0,0,10,0" />
+                                    <ComboBox ItemsSource="{Binding RecipientFilters}" SelectedItem="{Binding RecipientFilter}" Width="180"
+                                              HorizontalAlignment="Left" VerticalAlignment="Center" />
+                                </DockPanel>
+                            </Border>
+                            <DataGrid ItemsSource="{Binding RecipientsView}">
+                                <DataGrid.Columns>
+                                    <DataGridTemplateColumn Header="STATUS" Width="190">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Ellipse Width="9" Height="9" Margin="0,0,8,0" Fill="{Binding State, Converter={StaticResource StateBrush}}" />
+                                                    <TextBlock Text="{Binding StateText}" Foreground="{Binding State, Converter={StaticResource StateBrush}}" FontWeight="SemiBold" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="COMPUTER" Binding="{Binding MachineName}" Width="*" FontWeight="SemiBold" />
+                                    <DataGridTextColumn Header="DELIVERED" Binding="{Binding DeliveredAtUtc, Converter={StaticResource LocalTime}, ConverterParameter='dd MMM HH:mm:ss'}" Width="120" />
+                                    <DataGridTextColumn Header="READ / ACKNOWLEDGED" Binding="{Binding AcknowledgedAtUtc, Converter={StaticResource LocalTime}, ConverterParameter='dd MMM HH:mm:ss'}" Width="150" />
+                                    <DataGridTextColumn Header="READ BY" Binding="{Binding AcknowledgedBy}" Width="*" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ============================== Status bar -->
+        <Border Grid.Row="1" Grid.Column="1" Background="White" BorderBrush="{StaticResource Brand.Line}" BorderThickness="0,1,0,0" Padding="32,8">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Ellipse Width="8" Height="8" Margin="0,0,6,0" Fill="{Binding LiveConnected, Converter={StaticResource OnlineBrush}}" />
+                    <TextBlock Text="{Binding LiveStatusText}" FontSize="12" Foreground="{StaticResource Brand.Muted}" />
+                </StackPanel>
+                <TextBlock Text="{Binding StatusMessage}" FontSize="12" Foreground="{StaticResource Brand.Muted}" TextTrimming="CharacterEllipsis" />
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>

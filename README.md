@@ -81,3 +81,7 @@ database — passwords are plain values in that one variable, checked by
 The dashboard frontend (`public/index.html`) is generated from the same
 source as the office machine's `outlet_pnl_dashboard.html`. If you ask for
 a change to one, ask for it to be applied to both, or they'll drift apart.
+
+---
+
+**Also in this repo:** [`announcement-system/`](announcement-system/README.md) — the RGC company announcement system (WPF Admin Console + tray Client Agent + SignalR server, .NET 8).

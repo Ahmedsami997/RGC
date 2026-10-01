@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="Assets\rgc-logo.png" />
+    <Resource Include="Assets\rgc-icon.png" />
+    <Resource Include="Assets\rgc.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RGC.Shared\RGC.Shared.csproj" />
+  </ItemGroup>
+</Project>
