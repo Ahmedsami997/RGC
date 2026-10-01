@@ -50,10 +50,29 @@ public partial class App : Application
         _tray.ShowLastRequested += ShowLast;
         _tray.ExitRequested += () => Shutdown();
 
-        _connection.StateChanged += state => Dispatcher.InvokeAsync(() => _tray?.SetState(state));
+        _tray.SignInRequested += ShowSignIn;
+        _connection.StateChanged += state => Dispatcher.InvokeAsync(() => _tray?.SetState(state, _connection?.SignedInAs));
+        _connection.SignInRequired += () => Dispatcher.InvokeAsync(ShowSignIn);
         _connection.AnnouncementReceived += _notifications.Enqueue;
 
         await _connection.StartAsync();
+    }
+
+    private SignInWindow? _signInWindow;
+
+    /// <summary>Microsoft 365 sign-in, needed once per user on PCs that aren't joined to Entra.</summary>
+    private void ShowSignIn()
+    {
+        if (_connection is null) return;
+        if (_signInWindow is not null)
+        {
+            _signInWindow.Activate();
+            return;
+        }
+        _signInWindow = new SignInWindow(_connection);
+        _signInWindow.Closed += (_, _) => _signInWindow = null;
+        _signInWindow.Show();
+        _signInWindow.Activate();
     }
 
     /// <summary>Re-shows the last announcement for reference (already acknowledged, closes immediately).</summary>

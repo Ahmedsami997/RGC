@@ -1,8 +1,7 @@
 using System.Security.Claims;
 using System.Threading.RateLimiting;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using RGC.Server;
 using RGC.Server.Data;
 using RGC.Server.Hubs;
@@ -17,47 +16,51 @@ builder.Host.UseWindowsService(o => o.ServiceName = "RGC Announcement Server");
 
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 builder.Services.Configure<AnnouncementOptions>(builder.Configuration.GetSection("Announcements"));
+builder.Services.Configure<EntraOptions>(builder.Configuration.GetSection("Entra"));
+builder.Services.Configure<AuthModeOptions>(builder.Configuration.GetSection("Authentication"));
 
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions();
+var entra = builder.Configuration.GetSection("Entra").Get<EntraOptions>() ?? new EntraOptions();
+var authMode = builder.Configuration.GetSection("Authentication").Get<AuthModeOptions>() ?? new AuthModeOptions();
+
+if (!entra.Enabled && (!authMode.AllowLocalAdminLogin || !authMode.AllowAgentKey))
+    throw new InvalidOperationException("Entra:TenantId and Entra:ClientId must be set when local admin login or the agent key is turned off.");
+// The signing key also protects local admin tokens, so it is always required.
 if (jwt.SigningKey.Length < 32 || jwt.SigningKey.StartsWith("CHANGE-ME", StringComparison.Ordinal))
     throw new InvalidOperationException("Jwt:SigningKey must be set to a random secret of at least 32 characters.");
 var agentKey = builder.Configuration["Announcements:AgentKey"] ?? "";
-if (agentKey.Length < 16 || agentKey.StartsWith("CHANGE-ME", StringComparison.Ordinal))
-    throw new InvalidOperationException("Announcements:AgentKey must be set to a random secret of at least 16 characters.");
+if (authMode.AllowAgentKey && (agentKey.Length < 16 || agentKey.StartsWith("CHANGE-ME", StringComparison.Ordinal)))
+    throw new InvalidOperationException("Announcements:AgentKey must be set to a random secret of at least 16 characters (or set Authentication:AllowAgentKey to false).");
+
+// Listen on port 5080 unless the host (IIS, Azure App Service, ASPNETCORE_URLS, Kestrel config) says otherwise.
+if (string.IsNullOrEmpty(builder.Configuration["urls"]) &&
+    string.IsNullOrEmpty(builder.Configuration["HTTP_PORTS"]) &&
+    string.IsNullOrEmpty(builder.Configuration["HTTPS_PORTS"]) &&
+    !builder.Configuration.GetSection("Kestrel:Endpoints").Exists() &&
+    Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME") is null)
+{
+    builder.WebHost.UseUrls("http://0.0.0.0:5080");
+}
+
+// Behind Azure App Service / a reverse proxy: trust X-Forwarded-For/Proto so client IPs and HTTPS are seen correctly.
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    o.KnownNetworks.Clear();
+    o.KnownProxies.Clear();
+});
 
 builder.Services.AddDbContext<RgcDbContext>(o =>
     o.UseSqlServer(builder.Configuration.GetConnectionString("RgcDatabase"),
         sql => sql.EnableRetryOnFailure()));
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(o =>
-    {
-        o.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidIssuer = jwt.Issuer,
-            ValidateAudience = true,
-            ValidAudience = jwt.Audience,
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = jwt.GetKey(),
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.FromMinutes(1),
-            NameClaimType = ClaimTypes.Name,
-            RoleClaimType = ClaimTypes.Role
-        };
-        // SignalR WebSockets cannot send headers from the browser stack; accept the token from the query string for hubs.
-        o.Events = new JwtBearerEvents
-        {
-            OnMessageReceived = ctx =>
-            {
-                var token = ctx.Request.Query["access_token"];
-                if (!string.IsNullOrEmpty(token) && ctx.HttpContext.Request.Path.StartsWithSegments(HubRoutes.AdminHub))
-                    ctx.Token = token;
-                return Task.CompletedTask;
-            }
-        };
-    });
-builder.Services.AddAuthorization();
+builder.Services.AddRgcAuthentication(jwt, entra);
+builder.Services.AddAuthorization(o =>
+{
+    // Local admins carry role "Admin"; Microsoft 365 admins carry the app role configured in Entra:AdminRole.
+    o.AddPolicy("Admin", p => p.RequireAuthenticatedUser().RequireAssertion(ctx =>
+        ctx.User.IsInRole("Admin") || ctx.User.IsInRole(entra.AdminRole)));
+});
 
 builder.Services.AddRateLimiter(o =>
 {
@@ -92,14 +95,31 @@ if (args.Length > 0 && args[0] is "add-admin" or "reset-password")
 
 await Startup.InitializeDatabaseAsync(app.Services, app.Configuration, app.Logger);
 
+app.UseForwardedHeaders();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok", utc = DateTime.UtcNow }));
 
-app.MapPost("/api/auth/login", async (LoginRequest req, RgcDbContext db, TokenService tokens, ILogger<Program> log, HttpContext http) =>
+app.MapGet("/" + AuthRoutes.Config, () => Results.Ok(new AuthConfigDto(
+    entra.Enabled,
+    entra.Enabled ? entra.TenantId : null,
+    entra.Enabled ? entra.ClientId : null,
+    entra.Enabled ? entra.Scope : null,
+    authMode.AllowLocalAdminLogin,
+    authMode.AllowAgentKey)));
+
+app.MapGet("/" + AuthRoutes.Me, (ClaimsPrincipal user) => Results.Ok(new MeDto(
+    AuthSetup.GetDisplayName(user),
+    AuthSetup.GetEmail(user),
+    user.IsInRole("Admin") || user.IsInRole(entra.AdminRole)))).RequireAuthorization();
+
+app.MapPost("/" + AuthRoutes.Login, async (LoginRequest req, RgcDbContext db, TokenService tokens, ILogger<Program> log, HttpContext http) =>
 {
+    if (!authMode.AllowLocalAdminLogin)
+        return Results.Problem("Local sign-in is turned off. Use 'Sign in with Microsoft 365'.", statusCode: StatusCodes.Status403Forbidden);
+
     const int maxFailures = 5;
     var lockout = TimeSpan.FromMinutes(15);
     var invalid = Results.Problem("Invalid username or password.", statusCode: StatusCodes.Status401Unauthorized);
@@ -142,7 +162,7 @@ app.MapPost("/api/auth/login", async (LoginRequest req, RgcDbContext db, TokenSe
     return Results.Ok(new LoginResponse(token, expires, user.Username, user.DisplayName));
 }).RequireRateLimiting("login");
 
-var api = app.MapGroup("/api").RequireAuthorization(p => p.RequireRole("Admin"));
+var api = app.MapGroup("/api").RequireAuthorization("Admin");
 
 api.MapGet("/clients", (ClientDirectory dir, CancellationToken ct) => dir.GetAllAsync(ct));
 
@@ -156,7 +176,7 @@ api.MapPost("/announcements", async (SendAnnouncementRequest req, AnnouncementSe
 {
     var error = svc.Validate(req);
     if (error is not null) return Results.ValidationProblem(new Dictionary<string, string[]> { ["announcement"] = [error] });
-    var result = await svc.BroadcastAsync(req, user.Identity?.Name ?? "admin", ct);
+    var result = await svc.BroadcastAsync(req, AuthSetup.GetActorName(user), ct);
     return Results.Ok(result);
 });
 

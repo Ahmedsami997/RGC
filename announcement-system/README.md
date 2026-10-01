@@ -51,6 +51,10 @@ Real-time company-wide announcements for Royal Golf Club PCs, built with **C# .N
 
 ## Setup
 
+> **Online with Microsoft 365 sign-in?** Follow [AZURE-AND-M365-SETUP.md](AZURE-AND-M365-SETUP.md) instead –
+> Azure App Service + Azure SQL, admins and staff sign in with their 365 accounts.
+
+
 ### 1. Database (SQL Server)
 The server creates the `RGC_Announcements` database and tables automatically on first start.
 If your DBA prefers to create them up front, run `database/CreateDatabase.sql`, and

@@ -23,7 +23,7 @@ public sealed class MainViewModel : ObservableObject
     public MainViewModel(ApiClient api)
     {
         _api = api;
-        AdminName = string.IsNullOrWhiteSpace(api.Session?.DisplayName) ? api.Session?.Username ?? "" : api.Session.DisplayName;
+        AdminName = api.DisplayName;
         ServerUrl = api.ServerUrl;
 
         ClientsView = CollectionViewSource.GetDefaultView(Clients);
@@ -67,7 +67,7 @@ public sealed class MainViewModel : ObservableObject
         await RefreshAllAsync();
         try
         {
-            _live = new LiveUpdates(_api.ServerUrl, _api.Session!.Token);
+            _live = new LiveUpdates(_api.ServerUrl, _api.TokenProvider);
             _live.ConnectedChanged += c => Ui(() => LiveConnected = c);
             _live.ClientsChanged += () => Ui(() => Restart(_clientsDebounce));
             _live.AnnouncementCreated += _ => Ui(() => Restart(_historyDebounce));

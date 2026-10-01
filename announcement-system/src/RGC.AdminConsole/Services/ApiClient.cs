@@ -16,8 +16,13 @@ public sealed class ApiClient : IDisposable
 {
     private readonly HttpClient _http;
 
+    private Func<Task<string?>> _token = () => Task.FromResult<string?>(null);
+
     public string ServerUrl { get; }
-    public LoginResponse? Session { get; private set; }
+    public string DisplayName { get; private set; } = "";
+    public string? Email { get; private set; }
+    /// <summary>Supplies a current access token (refreshed automatically for Microsoft 365 sign-in).</summary>
+    public Func<Task<string?>> TokenProvider => _token;
 
     public ApiClient(string serverUrl)
     {
@@ -30,9 +35,28 @@ public sealed class ApiClient : IDisposable
         using var res = await _http.PostAsJsonAsync("api/auth/login", new LoginRequest(username, password));
         if (!res.IsSuccessStatusCode) throw new ApiException(await ReadProblemAsync(res, "Sign in failed."));
 
-        Session = await res.Content.ReadFromJsonAsync<LoginResponse>() ?? throw new ApiException("Empty response from server.");
-        _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Session.Token);
-        return Session;
+        var session = await res.Content.ReadFromJsonAsync<LoginResponse>() ?? throw new ApiException("Empty response from server.");
+        _token = () => Task.FromResult<string?>(session.Token);
+        DisplayName = string.IsNullOrWhiteSpace(session.DisplayName) ? session.Username : session.DisplayName;
+        return session;
+    }
+
+    public async Task<AuthConfigDto?> GetAuthConfigAsync()
+    {
+        // Null means an older server without Microsoft 365 support.
+        using var res = await _http.GetAsync(AuthRoutes.Config);
+        return res.IsSuccessStatusCode ? await res.Content.ReadFromJsonAsync<AuthConfigDto>() : null;
+    }
+
+    /// <summary>Uses a Microsoft 365 token source and checks the account has the Admin role.</summary>
+    public async Task UseMicrosoft365Async(Func<Task<string?>> tokenProvider)
+    {
+        _token = tokenProvider;
+        var me = await GetAsync<MeDto>(AuthRoutes.Me);
+        if (!me.IsAdmin)
+            throw new ApiException($"{me.Email ?? me.Name} is not an RGC announcements administrator. Ask IT to give your account the Admin role on the \"RGC Announcements\" app in Microsoft Entra.");
+        DisplayName = me.Name;
+        Email = me.Email;
     }
 
     public Task<List<ClientDto>> GetClientsAsync() => GetAsync<List<ClientDto>>("api/clients");
@@ -44,21 +68,32 @@ public sealed class ApiClient : IDisposable
 
     public async Task<AnnouncementSummaryDto> SendAnnouncementAsync(SendAnnouncementRequest request)
     {
-        using var res = await _http.PostAsJsonAsync("api/announcements", request);
+        using var msg = new HttpRequestMessage(HttpMethod.Post, "api/announcements") { Content = JsonContent.Create(request) };
+        using var res = await SendAsync(msg);
         await EnsureSuccessAsync(res);
         return (await res.Content.ReadFromJsonAsync<AnnouncementSummaryDto>())!;
     }
 
     private async Task<T> GetAsync<T>(string url)
     {
-        using var res = await _http.GetAsync(url);
+        using var msg = new HttpRequestMessage(HttpMethod.Get, url);
+        using var res = await SendAsync(msg);
         await EnsureSuccessAsync(res);
         return (await res.Content.ReadFromJsonAsync<T>())!;
     }
 
+    private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage msg)
+    {
+        var token = await _token();
+        if (token is null) throw new SessionExpiredException();
+        msg.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return await _http.SendAsync(msg);
+    }
+
     private static async Task EnsureSuccessAsync(HttpResponseMessage res)
     {
-        if (res.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) throw new SessionExpiredException();
+        if (res.StatusCode == HttpStatusCode.Unauthorized) throw new SessionExpiredException();
+        if (res.StatusCode == HttpStatusCode.Forbidden) throw new ApiException("Your account is not allowed to do this (Admin role required).");
         if (!res.IsSuccessStatusCode) throw new ApiException(await ReadProblemAsync(res, $"Server error ({(int)res.StatusCode})."));
     }
 

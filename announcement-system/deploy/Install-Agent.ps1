@@ -5,12 +5,15 @@
   - Registers it to start for every user at Windows logon (HKLM Run)
   - Starts it for the current user
 
-  Example:
+  Examples:
+    # Microsoft 365 sign-in (server online in Azure) - no key needed:
+    .\Install-Agent.ps1 -ServerUrl "https://rgc-announcements.azurewebsites.net"
+    # Shared agent key (server on the local network):
     .\Install-Agent.ps1 -ServerUrl "http://rgc-server:5080" -AgentKey "the-shared-agent-key"
 #>
 param(
     [Parameter(Mandatory)] [string]$ServerUrl,
-    [Parameter(Mandatory)] [string]$AgentKey,
+    [string]$AgentKey = "",
     [string]$InstallDir = "C:\Program Files\RGC\Agent",
     [int]$CountdownSeconds = 10
 )

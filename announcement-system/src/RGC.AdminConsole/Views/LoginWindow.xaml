@@ -35,17 +35,37 @@
                 <TextBlock Text="SERVER" Style="{StaticResource Text.Label}" />
                 <TextBox x:Name="ServerBox" Style="{StaticResource Input.Text}" Margin="0,0,0,14" />
 
-                <TextBlock Text="USERNAME" Style="{StaticResource Text.Label}" />
-                <TextBox x:Name="UserBox" Style="{StaticResource Input.Text}" Margin="0,0,0,14" />
-
-                <TextBlock Text="PASSWORD" Style="{StaticResource Text.Label}" />
-                <PasswordBox x:Name="PasswordBox" Style="{StaticResource Input.Password}" Margin="0,0,0,8" />
-
                 <TextBlock x:Name="ErrorText" Foreground="{StaticResource Priority.Critical}" TextWrapping="Wrap"
-                           FontSize="13" Margin="0,4,0,8" Visibility="Collapsed" />
+                           FontSize="13" Margin="0,0,0,10" Visibility="Collapsed" />
 
-                <Button x:Name="SignInButton" Content="Sign in" Style="{StaticResource Button.Primary}"
-                        IsDefault="True" Margin="0,8,0,0" Click="SignIn_Click" />
+                <Button x:Name="MsButton" Style="{StaticResource Button.Primary}" Click="Microsoft365_Click" Margin="0,4,0,0">
+                    <StackPanel Orientation="Horizontal">
+                        <!-- Four-square mark, drawn so no third-party image is bundled -->
+                        <Grid Width="16" Height="16" Margin="0,0,10,0">
+                            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
+                            <Rectangle Fill="#F25022" Margin="0,0,1,1" />
+                            <Rectangle Grid.Column="1" Fill="#7FBA00" Margin="1,0,0,1" />
+                            <Rectangle Grid.Row="1" Fill="#00A4EF" Margin="0,1,1,0" />
+                            <Rectangle Grid.Row="1" Grid.Column="1" Fill="#FFB900" Margin="1,1,0,0" />
+                        </Grid>
+                        <TextBlock x:Name="MsButtonText" Text="Sign in with Microsoft 365" />
+                    </StackPanel>
+                </Button>
+
+                <Expander x:Name="LocalExpander" Header="Use a local admin account" Margin="0,18,0,0"
+                          Foreground="{StaticResource Brand.Muted}" FontSize="13">
+                    <StackPanel Margin="0,12,0,0">
+                        <TextBlock Text="USERNAME" Style="{StaticResource Text.Label}" />
+                        <TextBox x:Name="UserBox" Style="{StaticResource Input.Text}" Margin="0,0,0,14" />
+
+                        <TextBlock Text="PASSWORD" Style="{StaticResource Text.Label}" />
+                        <PasswordBox x:Name="PasswordBox" Style="{StaticResource Input.Password}" Margin="0,0,0,8" />
+
+                        <Button x:Name="SignInButton" Content="Sign in" Style="{StaticResource Button.Secondary}"
+                                Margin="0,8,0,0" Click="SignIn_Click" />
+                    </StackPanel>
+                </Expander>
             </StackPanel>
         </Grid>
     </Grid>

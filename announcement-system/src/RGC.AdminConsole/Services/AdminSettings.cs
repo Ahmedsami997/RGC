@@ -7,6 +7,7 @@ public sealed class AdminSettings
 {
     public string ServerUrl { get; set; } = "http://localhost:5080";
     public string? LastUsername { get; set; }
+    public bool LastSignInWasLocal { get; set; }
 
     private static string UserFile =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RGC", "admin-console.json");

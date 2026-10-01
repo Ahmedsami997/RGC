@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
+using RGC.Server.Security;
 using RGC.Server.Services;
 using RGC.Shared;
 
@@ -13,6 +14,7 @@ public sealed class AgentHub(
     ClientDirectory directory,
     AnnouncementService announcements,
     IOptions<AnnouncementOptions> options,
+    IOptions<AuthModeOptions> authMode,
     ILogger<AgentHub> log) : Hub
 {
     public const string AgentsGroup = "agents";
@@ -20,10 +22,14 @@ public sealed class AgentHub(
     public override async Task OnConnectedAsync()
     {
         var http = Context.GetHttpContext();
-        var presented = http?.Request.Headers[HubRoutes.AgentKeyHeader].ToString();
-        if (!KeyMatches(presented, options.Value.AgentKey))
+        // Either a Microsoft 365 sign-in or (if still allowed) the shared agent key.
+        var signedIn = AuthSetup.IsEntraUser(Context.User);
+        var keyOk = authMode.Value.AllowAgentKey &&
+                    KeyMatches(http?.Request.Headers[HubRoutes.AgentKeyHeader].ToString(), options.Value.AgentKey);
+        if (!signedIn && !keyOk)
         {
-            log.LogWarning("Rejected agent connection from {Ip}: invalid agent key", http?.Connection.RemoteIpAddress);
+            log.LogWarning("Rejected agent connection from {Ip}: no Microsoft 365 sign-in and no valid agent key",
+                http?.Connection.RemoteIpAddress);
             Context.Abort();
             return;
         }
@@ -37,6 +43,10 @@ public sealed class AgentHub(
 
         var ct = Context.ConnectionAborted;
         var remoteIp = Context.GetHttpContext()?.Connection.RemoteIpAddress?.ToString();
+
+        // Trust the Microsoft 365 identity over whatever the PC reports.
+        if (AuthSetup.GetEmail(Context.User) is { } email && AuthSetup.IsEntraUser(Context.User))
+            registration = registration with { UserName = email };
 
         registry.Add(Context.ConnectionId, registration.ClientId);
         await directory.UpsertOnlineAsync(registration, remoteIp, ct);
@@ -60,6 +70,8 @@ public sealed class AgentHub(
     public async Task Acknowledge(AcknowledgementDto ack)
     {
         var clientId = RequireClient();
+        if (AuthSetup.IsEntraUser(Context.User) && AuthSetup.GetEmail(Context.User) is { } email)
+            ack = ack with { UserName = email };
         await announcements.AcknowledgeAsync(ack, clientId, Context.ConnectionAborted);
     }
 

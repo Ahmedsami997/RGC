@@ -99,3 +99,21 @@ public sealed record RecipientStatusDto(
     DateTime? DisplayedAtUtc,
     DateTime? AcknowledgedAtUtc,
     string? AcknowledgedBy);
+
+/// <summary>Tells the desktop apps how to sign in (served anonymously at /api/auth/config).</summary>
+public sealed record AuthConfigDto(
+    bool EntraEnabled,
+    string? TenantId,
+    string? ClientId,
+    string? Scope,
+    bool LocalLoginEnabled,
+    bool AgentKeyEnabled);
+
+public sealed record MeDto(string Name, string? Email, bool IsAdmin);
+
+public static class AuthRoutes
+{
+    public const string Config = "api/auth/config";
+    public const string Login = "api/auth/login";
+    public const string Me = "api/me";
+}

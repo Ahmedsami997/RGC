@@ -13,10 +13,10 @@ public sealed class LiveUpdates : IAsyncDisposable
     public event Action<AnnouncementSummaryDto>? AnnouncementCreated;
     public event Action<bool>? ConnectedChanged;
 
-    public LiveUpdates(string serverUrl, string token)
+    public LiveUpdates(string serverUrl, Func<Task<string?>> tokenProvider)
     {
         _hub = new HubConnectionBuilder()
-            .WithUrl(serverUrl + HubRoutes.AdminHub, o => o.AccessTokenProvider = () => Task.FromResult<string?>(token))
+            .WithUrl(serverUrl + HubRoutes.AdminHub, o => o.AccessTokenProvider = tokenProvider)
             .WithAutomaticReconnect([TimeSpan.Zero, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30)])
             .Build();
 
