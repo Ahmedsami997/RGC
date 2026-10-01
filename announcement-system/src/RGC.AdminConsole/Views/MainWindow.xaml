@@ -343,7 +343,7 @@
 
                     <Grid Visibility="{Binding HasSelection, Converter={StaticResource BoolToVis}}">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="340" />
+                            <ColumnDefinition Width="280" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
@@ -376,7 +376,7 @@
                             </Border>
                             <DataGrid ItemsSource="{Binding RecipientsView}">
                                 <DataGrid.Columns>
-                                    <DataGridTemplateColumn Header="STATUS" Width="190">
+                                    <DataGridTemplateColumn Header="STATUS" Width="Auto" MinWidth="110">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal">
@@ -386,10 +386,10 @@
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="COMPUTER" Binding="{Binding MachineName}" Width="*" FontWeight="SemiBold" />
-                                    <DataGridTextColumn Header="DELIVERED" Binding="{Binding DeliveredAtUtc, Converter={StaticResource LocalTime}, ConverterParameter='dd MMM HH:mm:ss'}" Width="120" />
-                                    <DataGridTextColumn Header="READ / ACKNOWLEDGED" Binding="{Binding AcknowledgedAtUtc, Converter={StaticResource LocalTime}, ConverterParameter='dd MMM HH:mm:ss'}" Width="150" />
-                                    <DataGridTextColumn Header="READ BY" Binding="{Binding AcknowledgedBy}" Width="*" />
+                                    <DataGridTextColumn Header="COMPUTER" Binding="{Binding MachineName}" Width="*" MinWidth="140" FontWeight="SemiBold" />
+                                    <DataGridTextColumn Header="DELIVERED" Binding="{Binding DeliveredAtUtc, Converter={StaticResource LocalTime}, ConverterParameter='dd MMM HH:mm:ss'}" Width="Auto" MinWidth="110" />
+                                    <DataGridTextColumn Header="READ AT" Binding="{Binding AcknowledgedAtUtc, Converter={StaticResource LocalTime}, ConverterParameter='dd MMM HH:mm:ss'}" Width="Auto" MinWidth="110" />
+                                    <DataGridTextColumn Header="READ BY" Binding="{Binding AcknowledgedBy}" Width="*" MinWidth="160" />
                                 </DataGrid.Columns>
                             </DataGrid>
                         </DockPanel>
