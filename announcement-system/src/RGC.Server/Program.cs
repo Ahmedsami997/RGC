@@ -23,14 +23,34 @@ var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOp
 var entra = builder.Configuration.GetSection("Entra").Get<EntraOptions>() ?? new EntraOptions();
 var authMode = builder.Configuration.GetSection("Authentication").Get<AuthModeOptions>() ?? new AuthModeOptions();
 
+// Configuration problems don't crash the server: it starts anyway and reports them on /api/health,
+// so a wrong setting on a hosted server (e.g. Azure App Service) can be seen in a browser.
+var problems = new List<string>();
 if (!entra.Enabled && (!authMode.AllowLocalAdminLogin || !authMode.AllowAgentKey))
-    throw new InvalidOperationException("Entra:TenantId and Entra:ClientId must be set when local admin login or the agent key is turned off.");
+    problems.Add("Entra:TenantId and Entra:ClientId must be set (valid GUIDs) when local admin login or the agent key is turned off.");
 // The signing key also protects local admin tokens, so it is always required.
 if (jwt.SigningKey.Length < 32 || jwt.SigningKey.StartsWith("CHANGE-ME", StringComparison.Ordinal))
-    throw new InvalidOperationException("Jwt:SigningKey must be set to a random secret of at least 32 characters.");
+{
+    problems.Add("Jwt:SigningKey is missing or shorter than 32 characters. Local admin sign-in is disabled until it is set.");
+    // Use a throw-away key so the server still runs; local tokens won't survive a restart.
+    jwt.SigningKey = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(48));
+    authMode.AllowLocalAdminLogin = false;
+}
 var agentKey = builder.Configuration["Announcements:AgentKey"] ?? "";
 if (authMode.AllowAgentKey && (agentKey.Length < 16 || agentKey.StartsWith("CHANGE-ME", StringComparison.Ordinal)))
-    throw new InvalidOperationException("Announcements:AgentKey must be set to a random secret of at least 16 characters (or set Authentication:AllowAgentKey to false).");
+{
+    problems.Add("Announcements:AgentKey is missing or shorter than 16 characters. Agents can only connect with Microsoft 365 sign-in (or set Authentication:AllowAgentKey to false).");
+    authMode.AllowAgentKey = false;
+}
+if (string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("RgcDatabase")))
+    problems.Add("ConnectionStrings:RgcDatabase is not set.");
+// Keep the options seen by hubs/endpoints in line with what was decided above.
+builder.Services.PostConfigure<AuthModeOptions>(o =>
+{
+    o.AllowAgentKey = authMode.AllowAgentKey;
+    o.AllowLocalAdminLogin = authMode.AllowLocalAdminLogin;
+});
+builder.Services.PostConfigure<JwtOptions>(o => o.SigningKey = jwt.SigningKey);
 
 // Listen on port 5080 unless the host (IIS, Azure App Service, ASPNETCORE_URLS, Kestrel config) says otherwise.
 if (string.IsNullOrEmpty(builder.Configuration["urls"]) &&
@@ -93,7 +113,17 @@ if (args.Length > 0 && args[0] is "add-admin" or "reset-password")
     return;
 }
 
-await Startup.InitializeDatabaseAsync(app.Services, app.Configuration, app.Logger);
+foreach (var problem in problems) app.Logger.LogError("Configuration problem: {Problem}", problem);
+try
+{
+    await Startup.InitializeDatabaseAsync(app.Services, app.Configuration, app.Logger);
+}
+catch (Exception ex)
+{
+    // Most often a wrong connection string, password or SQL firewall rule.
+    app.Logger.LogError(ex, "Database initialisation failed");
+    problems.Add($"Database: {ex.GetBaseException().Message}");
+}
 
 app.UseForwardedHeaders();
 app.UseRateLimiter();
@@ -102,7 +132,8 @@ app.UseAuthorization();
 
 app.MapGet("/api/health", () => Results.Ok(new
 {
-    status = "ok",
+    status = problems.Count == 0 ? "ok" : "error",
+    problems,
     utc = DateTime.UtcNow,
     version = typeof(Program).Assembly.GetName().Version?.ToString(),
     microsoft365 = entra.Enabled
