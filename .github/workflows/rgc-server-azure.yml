@@ -6,7 +6,7 @@ name: Deploy RGC Server to Azure
 
 on:
   push:
-    branches: [main]
+    branches: [main, "claude/rgc-announcement-system-l2q18w"]
     paths: ["announcement-system/src/RGC.Server/**", "announcement-system/src/RGC.Shared/**", ".github/workflows/rgc-server-azure.yml"]
   workflow_dispatch:
 
