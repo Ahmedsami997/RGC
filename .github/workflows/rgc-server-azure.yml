@@ -1,0 +1,37 @@
+name: Deploy RGC Server to Azure
+
+# Builds RGC.Server for Azure App Service (Linux) and deploys it when the
+# AZURE_WEBAPP_PUBLISH_PROFILE secret and AZURE_WEBAPP_NAME variable are set.
+# Without them it only builds the package (downloadable from the run page).
+
+on:
+  push:
+    branches: [main, "claude/rgc-announcement-system-l2q18w"]
+    paths: ["announcement-system/src/RGC.Server/**", "announcement-system/src/RGC.Shared/**", ".github/workflows/rgc-server-azure.yml"]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Publish server
+        run: dotnet publish announcement-system/src/RGC.Server/RGC.Server.csproj -c Release -o server-out -p:DebugType=none
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RGC-Server-azure
+          path: server-out
+
+      - name: Deploy to Azure App Service
+        if: ${{ vars.AZURE_WEBAPP_NAME != '' }}
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: server-out
