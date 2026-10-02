@@ -100,7 +100,13 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/api/health", () => Results.Ok(new { status = "ok", utc = DateTime.UtcNow }));
+app.MapGet("/api/health", () => Results.Ok(new
+{
+    status = "ok",
+    utc = DateTime.UtcNow,
+    version = typeof(Program).Assembly.GetName().Version?.ToString(),
+    microsoft365 = entra.Enabled
+}));
 
 app.MapGet("/" + AuthRoutes.Config, () => Results.Ok(new AuthConfigDto(
     entra.Enabled,
