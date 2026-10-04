@@ -116,15 +116,42 @@ if (args.Length > 0 && args[0] is "add-admin" or "reset-password")
 }
 
 foreach (var problem in problems) app.Logger.LogError("Configuration problem: {Problem}", problem);
-try
+// Azure SQL can refuse the first connections while it wakes up (serverless auto-pause) or
+// during maintenance, so retry a few times, then keep retrying in the background. /api/health
+// reports the error until it succeeds; a wrong password or firewall rule never will.
+async Task<bool> InitializeDatabaseAsync()
 {
-    await Startup.InitializeDatabaseAsync(app.Services, app.Configuration, app.Logger);
+    try
+    {
+        await Startup.InitializeDatabaseAsync(app.Services, app.Configuration, app.Logger);
+        lock (problems) problems.RemoveAll(p => p.StartsWith("Database:", StringComparison.Ordinal));
+        return true;
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "Database initialisation failed");
+        lock (problems)
+        {
+            problems.RemoveAll(p => p.StartsWith("Database:", StringComparison.Ordinal));
+            problems.Add($"Database: {ex.GetBaseException().Message}");
+        }
+        return false;
+    }
 }
-catch (Exception ex)
+
+var databaseReady = await InitializeDatabaseAsync();
+for (var attempt = 1; attempt <= 3 && !databaseReady; attempt++)
 {
-    // Most often a wrong connection string, password or SQL firewall rule.
-    app.Logger.LogError(ex, "Database initialisation failed");
-    problems.Add($"Database: {ex.GetBaseException().Message}");
+    await Task.Delay(TimeSpan.FromSeconds(10 * attempt));
+    databaseReady = await InitializeDatabaseAsync();
+}
+if (!databaseReady)
+{
+    _ = Task.Run(async () =>
+    {
+        while (!app.Lifetime.ApplicationStopping.IsCancellationRequested && !await InitializeDatabaseAsync())
+            await Task.Delay(TimeSpan.FromMinutes(1), app.Lifetime.ApplicationStopping).ContinueWith(_ => { });
+    });
 }
 
 app.UseForwardedHeaders();
@@ -132,14 +159,19 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/api/health", () => Results.Ok(new
+app.MapGet("/api/health", () =>
 {
-    status = problems.Count == 0 ? "ok" : "error",
-    problems,
-    utc = DateTime.UtcNow,
-    version = typeof(Program).Assembly.GetName().Version?.ToString(),
-    microsoft365 = entra.Enabled
-}));
+    string[] current;
+    lock (problems) current = problems.ToArray();
+    return Results.Ok(new
+    {
+        status = current.Length == 0 ? "ok" : "error",
+        problems = current,
+        utc = DateTime.UtcNow,
+        version = typeof(Program).Assembly.GetName().Version?.ToString(),
+        microsoft365 = entra.Enabled
+    });
+});
 
 app.MapGet("/" + AuthRoutes.Config, () => Results.Ok(new AuthConfigDto(
     entra.Enabled,
