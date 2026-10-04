@@ -29,7 +29,11 @@ foreach ($f in $files) {
     if (-not (Test-Path (Join-Path $PSScriptRoot $f))) { throw "$f not found next to this script - run it from the unzipped RGC-Staff-Installer folder." }
 }
 New-Item -ItemType Directory -Force -Path $DeployDir | Out-Null
-foreach ($f in $files) { Copy-Item (Join-Path $PSScriptRoot $f) $DeployDir -Force }
+$DeployDir = (Resolve-Path $DeployDir).Path
+# Skip the copy when the script is already running from the deploy folder.
+if ($DeployDir.TrimEnd('\') -ne $PSScriptRoot.TrimEnd('\')) {
+    foreach ($f in $files) { Copy-Item (Join-Path $PSScriptRoot $f) $DeployDir -Force }
+}
 Get-ChildItem $DeployDir | Unblock-File
 
 $runtime = Join-Path $DeployDir "windowsdesktop-runtime-8-win-x64.exe"
