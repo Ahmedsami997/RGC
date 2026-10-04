@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Data;
@@ -11,11 +10,12 @@ using RGC.Shared;
 
 namespace RGC.AdminConsole.ViewModels;
 
-public sealed class MainViewModel : ObservableObject
+public sealed partial class MainViewModel : ObservableObject
 {
     private readonly ApiClient _api;
     private readonly DispatcherTimer _clientsDebounce;
     private readonly DispatcherTimer _historyDebounce;
+    private readonly DispatcherTimer _reportsDebounce;
     private LiveUpdates? _live;
 
     public event Action? SignOutRequested;
@@ -27,12 +27,16 @@ public sealed class MainViewModel : ObservableObject
         ServerUrl = api.ServerUrl;
 
         ClientsView = CollectionViewSource.GetDefaultView(Clients);
-        ClientsView.Filter = o => o is ClientDto c && MatchesClientFilter(c);
+        ClientsView.Filter = o => o is ComputerRow c && MatchesClientFilter(c);
+        PeopleView = CollectionViewSource.GetDefaultView(People);
+        PeopleView.Filter = o => o is PersonRow p && MatchesPersonFilter(p);
         RecipientsView = CollectionViewSource.GetDefaultView(Recipients);
         RecipientsView.Filter = o => o is RecipientRow r && MatchesRecipientFilter(r);
 
-        _clientsDebounce = Debounce(async () => await LoadClientsAsync());
+        // PCs connect and disconnect in bursts (everyone logs on at 8am): coalesce the reloads.
+        _clientsDebounce = Debounce(async () => await LoadClientsAsync(), TimeSpan.FromSeconds(2));
         _historyDebounce = Debounce(async () => await LoadHistoryAsync());
+        _reportsDebounce = Debounce(async () => await LoadReportsAsync(), TimeSpan.FromSeconds(4));
 
         RefreshCommand = new AsyncRelayCommand(RefreshAllAsync);
         SendCommand = new AsyncRelayCommand(SendAsync, CanSend);
@@ -40,14 +44,21 @@ public sealed class MainViewModel : ObservableObject
         ExportRecipientsCommand = new RelayCommand(ExportRecipients, () => SelectedAnnouncement is not null);
         SignOutCommand = new RelayCommand(() => SignOutRequested?.Invoke());
         GoComposeCommand = new RelayCommand(() => IsCompose = true);
+        ResendCommand = new AsyncRelayCommand(ResendAsync, () => SelectedAnnouncement is { } a && a.Acknowledged < a.TotalRecipients);
+        ExportComputersCommand = new RelayCommand(ExportComputers);
+        ExportPeopleCommand = new RelayCommand(ExportPeople);
+        ExportPersonRecordsCommand = new RelayCommand(ExportPersonRecords, () => SelectedPerson is not null);
+        ShowPersonCommand = new RelayCommand(p => ShowPerson(p as string));
     }
 
     // ---------------------------------------------------------------- shell
     public string AdminName { get; }
     public string ServerUrl { get; }
 
-    private bool _isDashboard = true, _isCompose, _isHistory;
+    private bool _isDashboard = true, _isComputers, _isPeople, _isCompose, _isHistory;
     public bool IsDashboard { get => _isDashboard; set => Set(ref _isDashboard, value); }
+    public bool IsComputers { get => _isComputers; set => Set(ref _isComputers, value); }
+    public bool IsPeople { get => _isPeople; set => Set(ref _isPeople, value); }
     public bool IsCompose { get => _isCompose; set => Set(ref _isCompose, value); }
     public bool IsHistory { get => _isHistory; set => Set(ref _isHistory, value); }
 
@@ -70,7 +81,7 @@ public sealed class MainViewModel : ObservableObject
             _live = new LiveUpdates(_api.ServerUrl, _api.TokenProvider);
             _live.ConnectedChanged += c => Ui(() => LiveConnected = c);
             _live.ClientsChanged += () => Ui(() => Restart(_clientsDebounce));
-            _live.AnnouncementCreated += _ => Ui(() => Restart(_historyDebounce));
+            _live.AnnouncementCreated += _ => Ui(() => { Restart(_historyDebounce); Restart(_reportsDebounce); });
             _live.RecipientUpdated += r => Ui(() => OnRecipientUpdated(r));
             await _live.StartAsync();
         }
@@ -89,11 +100,20 @@ public sealed class MainViewModel : ObservableObject
     {
         await LoadClientsAsync();
         await LoadHistoryAsync();
+        await LoadReportsAsync();
         if (SelectedAnnouncement is not null) await LoadRecipientsAsync(SelectedAnnouncement.Id);
     }
 
-    // ---------------------------------------------------------------- dashboard
-    public ObservableCollection<ClientDto> Clients { get; } = new();
+    /// <summary>Dashboard statistics, the people list and the open per-person/per-PC reports.</summary>
+    private async Task LoadReportsAsync()
+    {
+        await LoadStatsAsync();
+        await LoadPeopleAsync();
+        if (SelectedComputer is not null) await LoadComputerRecordsAsync(SelectedComputer.Id);
+    }
+
+    // ---------------------------------------------------------------- computers
+    public ObservableCollection<ComputerRow> Clients { get; } = new();
     public ICollectionView ClientsView { get; }
 
     private string _clientFilter = "";
@@ -108,18 +128,43 @@ public sealed class MainViewModel : ObservableObject
     public int OfflineClients => TotalClients - OnlineClients;
     public int AnnouncementsToday => History.Count(a => a.CreatedAtUtc.ToLocalTime().Date == DateTime.Today);
 
-    private bool MatchesClientFilter(ClientDto c) =>
-        string.IsNullOrWhiteSpace(ClientFilter) ||
-        c.MachineName.Contains(ClientFilter, StringComparison.OrdinalIgnoreCase) ||
-        c.UserName.Contains(ClientFilter, StringComparison.OrdinalIgnoreCase) ||
-        (c.IpAddress?.Contains(ClientFilter, StringComparison.OrdinalIgnoreCase) ?? false);
+    public IReadOnlyList<string> ComputerStatusFilters { get; } = ["All computers", "Online", "Offline", "Has unread"];
+
+    private string _computerStatusFilter = "All computers";
+    public string ComputerStatusFilter
+    {
+        get => _computerStatusFilter;
+        set { if (Set(ref _computerStatusFilter, value)) ClientsView.Refresh(); }
+    }
+
+    private bool MatchesClientFilter(ComputerRow c)
+    {
+        var status = ComputerStatusFilter switch
+        {
+            "Online" => c.IsOnline,
+            "Offline" => !c.IsOnline,
+            "Has unread" => c.Unread > 0,
+            _ => true
+        };
+        return status && (string.IsNullOrWhiteSpace(ClientFilter) ||
+            c.MachineName.Contains(ClientFilter, StringComparison.OrdinalIgnoreCase) ||
+            c.UserText.Contains(ClientFilter, StringComparison.OrdinalIgnoreCase) ||
+            c.UserName.Contains(ClientFilter, StringComparison.OrdinalIgnoreCase) ||
+            (c.WindowsUser?.Contains(ClientFilter, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (c.IpAddress?.Contains(ClientFilter, StringComparison.OrdinalIgnoreCase) ?? false));
+    }
 
     private async Task LoadClientsAsync()
     {
         var clients = await Guard(_api.GetClientsAsync);
         if (clients is null) return;
+        var selectedId = SelectedComputer?.Id;
         Clients.Clear();
-        foreach (var c in clients) Clients.Add(c);
+        foreach (var c in clients) Clients.Add(new ComputerRow(c));
+        // Keep the detail panel on the same PC; its records are refreshed separately.
+        _selectedComputer = Clients.FirstOrDefault(c => c.Id == selectedId);
+        OnPropertyChanged(nameof(SelectedComputer));
+        OnPropertyChanged(nameof(HasComputerSelection));
         OnPropertyChanged(nameof(TotalClients));
         OnPropertyChanged(nameof(OnlineClients));
         OnPropertyChanged(nameof(OfflineClients));
@@ -177,6 +222,7 @@ public sealed class MainViewModel : ObservableObject
     public ObservableCollection<RecipientRow> Recipients { get; } = new();
     public ICollectionView RecipientsView { get; }
     public ICommand ExportRecipientsCommand { get; }
+    public ICommand ResendCommand { get; }
 
     public IReadOnlyList<string> RecipientFilters { get; } = ["All computers", "Pending delivery", "Not read yet", "Read"];
 
@@ -238,7 +284,7 @@ public sealed class MainViewModel : ObservableObject
         var items = await Guard(() => _api.GetRecipientsAsync(announcementId));
         if (items is null || SelectedAnnouncement?.Id != announcementId) return;
         Recipients.Clear();
-        foreach (var r in items) Recipients.Add(new RecipientRow(r));
+        foreach (var r in items) Recipients.Add(new RecipientRow(r, SelectedAnnouncement.CreatedAtUtc));
     }
 
     private void OnRecipientUpdated(RecipientStatusDto dto)
@@ -246,45 +292,47 @@ public sealed class MainViewModel : ObservableObject
         if (SelectedAnnouncement?.Id == dto.AnnouncementId)
         {
             var row = Recipients.FirstOrDefault(r => r.ClientId == dto.ClientId);
-            if (row is null) Recipients.Add(new RecipientRow(dto));
+            if (row is null) Recipients.Add(new RecipientRow(dto, SelectedAnnouncement.CreatedAtUtc));
             else row.Update(dto);
             RecipientsView.Refresh();
         }
         Restart(_historyDebounce);
+        Restart(_reportsDebounce);
+    }
+
+    private async Task ResendAsync()
+    {
+        if (SelectedAnnouncement is not { } a) return;
+        var unread = a.TotalRecipients - a.Acknowledged;
+        var confirm = MessageBox.Show(
+            $"Show \"{a.Title}\" again on the {unread} computer(s) that haven't read it?\n\n" +
+            "Online computers get it now; offline ones when they next connect.",
+            "RGC – Resend to unread", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes) return;
+
+        var result = await Guard(() => _api.ResendToUnreadAsync(a.Id));
+        if (result is null) return;
+        StatusMessage = $"Resent \"{a.Title}\" to {result.Unread} unread computer(s); {result.SentNow} online now, " +
+                        $"{result.Unread - result.SentNow} will get it when they reconnect.";
     }
 
     private void ExportRecipients()
     {
-        if (SelectedAnnouncement is null) return;
-        var dialog = new Microsoft.Win32.SaveFileDialog
+        if (SelectedAnnouncement is not { } a) return;
+        var rows = RecipientsView.Cast<RecipientRow>().ToList();
+        var header = new[]
         {
-            FileName = $"RGC-announcement-{SelectedAnnouncement.CreatedAtUtc.ToLocalTime():yyyyMMdd-HHmm}.csv",
-            Filter = "CSV files (*.csv)|*.csv"
+            $"Announcement,{Csv(a.Title)}",
+            $"Priority,{a.Priority}",
+            $"Sent,{CsvTime(a.CreatedAtUtc)},by,{Csv(a.CreatedBy)}",
+            $"Showing,{Csv(RecipientFilter)}",
+            "",
+            "Computer,User,Status,Delivered at,Displayed at,Read at,Read by,Time to read"
         };
-        if (dialog.ShowDialog() != true) return;
-
-        static string Csv(string? s) => $"\"{(s ?? "").Replace("\"", "\"\"")}\"";
-        static string Time(DateTime? t) => t?.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") ?? "";
-
-        var sb = new StringBuilder();
-        sb.AppendLine($"Announcement,{Csv(SelectedAnnouncement.Title)}");
-        sb.AppendLine($"Priority,{SelectedAnnouncement.Priority}");
-        sb.AppendLine($"Sent,{Time(SelectedAnnouncement.CreatedAtUtc)},by,{Csv(SelectedAnnouncement.CreatedBy)}");
-        sb.AppendLine();
-        sb.AppendLine("Computer,User,Status,Delivered at,Displayed at,Acknowledged at,Acknowledged by");
-        foreach (var r in Recipients)
-            sb.AppendLine(string.Join(',', Csv(r.MachineName), Csv(r.UserName), Csv(r.StateText),
-                Time(r.DeliveredAtUtc), Time(r.DisplayedAtUtc), Time(r.AcknowledgedAtUtc), Csv(r.AcknowledgedBy)));
-
-        try
-        {
-            File.WriteAllText(dialog.FileName, sb.ToString(), Encoding.UTF8);
-            StatusMessage = $"Exported {Recipients.Count} rows to {dialog.FileName}";
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(ex.Message, "RGC – Export failed", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+        ExportCsv($"RGC-announcement-{a.CreatedAtUtc.ToLocalTime():yyyyMMdd-HHmm}.csv", header,
+            rows.Select(r => string.Join(',', Csv(r.MachineName), Csv(r.UserName), Csv(r.StateText),
+                CsvTime(r.DeliveredAtUtc), CsvTime(r.DisplayedAtUtc), CsvTime(r.AcknowledgedAtUtc),
+                Csv(r.AcknowledgedBy), Csv(r.TimeToReadText))));
     }
 
     // ---------------------------------------------------------------- helpers
@@ -308,9 +356,9 @@ public sealed class MainViewModel : ObservableObject
         return null;
     }
 
-    private static DispatcherTimer Debounce(Func<Task> action)
+    private static DispatcherTimer Debounce(Func<Task> action, TimeSpan? delay = null)
     {
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
+        var timer = new DispatcherTimer { Interval = delay ?? TimeSpan.FromMilliseconds(600) };
         timer.Tick += async (_, _) =>
         {
             timer.Stop();

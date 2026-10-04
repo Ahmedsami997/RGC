@@ -66,6 +66,28 @@ public sealed class ApiClient : IDisposable
     public Task<List<RecipientStatusDto>> GetRecipientsAsync(Guid announcementId) =>
         GetAsync<List<RecipientStatusDto>>($"api/announcements/{announcementId}/recipients");
 
+    public Task<List<ReadRecordDto>> GetClientRecordsAsync(Guid clientId) =>
+        GetAsync<List<ReadRecordDto>>($"api/clients/{clientId}/records");
+
+    public Task<StatsDto> GetStatsAsync(int days)
+    {
+        var tz = (int)TimeZoneInfo.Local.GetUtcOffset(DateTime.Now).TotalMinutes;
+        return GetAsync<StatsDto>($"api/stats?days={days}&tz={tz}");
+    }
+
+    public Task<List<PersonSummaryDto>> GetPeopleAsync() => GetAsync<List<PersonSummaryDto>>("api/people");
+
+    public Task<List<ReadRecordDto>> GetPersonRecordsAsync(string user) =>
+        GetAsync<List<ReadRecordDto>>($"api/people/records?user={Uri.EscapeDataString(user)}");
+
+    public async Task<ResendResultDto> ResendToUnreadAsync(Guid announcementId)
+    {
+        using var msg = new HttpRequestMessage(HttpMethod.Post, $"api/announcements/{announcementId}/resend");
+        using var res = await SendAsync(msg);
+        await EnsureSuccessAsync(res);
+        return (await res.Content.ReadFromJsonAsync<ResendResultDto>())!;
+    }
+
     public async Task<AnnouncementSummaryDto> SendAnnouncementAsync(SendAnnouncementRequest request)
     {
         using var msg = new HttpRequestMessage(HttpMethod.Post, "api/announcements") { Content = JsonContent.Create(request) };

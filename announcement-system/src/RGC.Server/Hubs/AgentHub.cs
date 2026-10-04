@@ -44,12 +44,18 @@ public sealed class AgentHub(
         var ct = Context.ConnectionAborted;
         var remoteIp = Context.GetHttpContext()?.Connection.RemoteIpAddress?.ToString();
 
+        // Older agents only send the Windows account, as UserName.
+        var windowsUser = string.IsNullOrWhiteSpace(registration.WindowsUser) ? registration.UserName : registration.WindowsUser;
+        string? displayName = null;
         // Trust the Microsoft 365 identity over whatever the PC reports.
         if (AuthSetup.GetEmail(Context.User) is { } email && AuthSetup.IsEntraUser(Context.User))
+        {
             registration = registration with { UserName = email };
+            displayName = AuthSetup.GetDisplayName(Context.User);
+        }
 
         registry.Add(Context.ConnectionId, registration.ClientId);
-        await directory.UpsertOnlineAsync(registration, remoteIp, ct);
+        await directory.UpsertOnlineAsync(registration, windowsUser, displayName, remoteIp, ct);
         await Groups.AddToGroupAsync(Context.ConnectionId, AgentsGroup, ct);
 
         log.LogInformation("Agent registered: {Machine} ({User}) {ClientId}",

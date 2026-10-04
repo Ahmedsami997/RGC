@@ -9,6 +9,7 @@ namespace RGC.Server.Services;
 
 public sealed class AnnouncementService(
     RgcDbContext db,
+    ConnectionRegistry registry,
     IHubContext<AgentHub> agentHub,
     IHubContext<AdminHub> adminHub,
     IOptions<AnnouncementOptions> options,
@@ -56,11 +57,40 @@ public sealed class AnnouncementService(
     {
         var since = DateTime.UtcNow.AddHours(-_opt.PendingDeliveryWindowHours);
         var pending = await db.AnnouncementRecipients
-            .Where(r => r.ClientId == clientId && r.AcknowledgedAtUtc == null && r.Announcement.CreatedAtUtc >= since)
+            .Where(r => r.ClientId == clientId && r.AcknowledgedAtUtc == null &&
+                        (r.Announcement.LastResentAtUtc ?? r.Announcement.CreatedAtUtc) >= since)
             .OrderBy(r => r.Announcement.CreatedAtUtc)
             .Select(r => r.Announcement)
             .ToListAsync(ct);
         return pending.Select(ToMessage).ToList();
+    }
+
+    /// <summary>
+    /// Sends the announcement again to every PC that hasn't read it. Online PCs get it now;
+    /// offline ones when they reconnect (the pending-delivery window restarts from now).
+    /// </summary>
+    public async Task<ResendResultDto?> ResendToUnreadAsync(Guid announcementId, string adminName, CancellationToken ct)
+    {
+        var announcement = await db.Announcements.FindAsync([announcementId], ct);
+        if (announcement is null) return null;
+
+        var unread = await db.AnnouncementRecipients
+            .Where(r => r.AnnouncementId == announcementId && r.AcknowledgedAtUtc == null)
+            .Select(r => r.ClientId)
+            .ToListAsync(ct);
+
+        announcement.LastResentAtUtc = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        var connections = unread.SelectMany(registry.ConnectionsFor).ToList();
+        if (connections.Count > 0)
+            await agentHub.Clients.Clients(connections)
+                .SendAsync(AgentClientMethods.ReceiveAnnouncement, ToMessage(announcement), ct);
+
+        var sentNow = unread.Count(id => registry.HasConnections(id));
+        log.LogInformation("Announcement {Id} resent by {Admin} to {Unread} unread PCs ({Online} online now)",
+            announcementId, adminName, unread.Count, sentNow);
+        return new ResendResultDto(unread.Count, sentNow);
     }
 
     public async Task MarkDeliveredAsync(Guid announcementId, Guid clientId, CancellationToken ct)

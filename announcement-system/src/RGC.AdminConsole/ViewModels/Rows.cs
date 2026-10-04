@@ -42,10 +42,13 @@ public sealed class RecipientRow : ObservableObject
     public Guid ClientId { get; }
     private RecipientStatusDto _dto;
 
-    public RecipientRow(RecipientStatusDto dto)
+    private readonly DateTime _sentAtUtc;
+
+    public RecipientRow(RecipientStatusDto dto, DateTime sentAtUtc)
     {
         ClientId = dto.ClientId;
         _dto = dto;
+        _sentAtUtc = sentAtUtc;
     }
 
     public string MachineName => _dto.MachineName;
@@ -59,6 +62,8 @@ public sealed class RecipientRow : ObservableObject
     public RecipientState State =>
         _dto.AcknowledgedAtUtc is not null ? RecipientState.Read :
         _dto.DeliveredAtUtc is not null ? RecipientState.Delivered : RecipientState.Pending;
+
+    public string TimeToReadText => Fmt.Duration(Fmt.MinutesBetween(_sentAtUtc, _dto.AcknowledgedAtUtc));
 
     public string StateText => State switch
     {

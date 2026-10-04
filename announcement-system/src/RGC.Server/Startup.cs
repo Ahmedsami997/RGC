@@ -13,6 +13,8 @@ internal static class Startup
 
         // Creates the database and tables on first run (see database/CreateDatabase.sql for the equivalent script).
         await db.Database.EnsureCreatedAsync();
+        // EnsureCreated doesn't change an existing database; add what later versions need.
+        if (db.Database.IsSqlServer()) await UpgradeSchemaAsync(db);
 
         // Nobody is connected right after a (re)start; agents re-register as they reconnect.
         await db.Clients.Where(c => c.IsOnline).ExecuteUpdateAsync(s => s.SetProperty(c => c.IsOnline, false));
@@ -37,6 +39,19 @@ internal static class Startup
             log.LogWarning("Created bootstrap admin '{User}'. Remove BootstrapAdmin:Password from configuration now.", username);
         }
     }
+
+    /// <summary>Idempotent: safe to run on every start, on new and existing databases.</summary>
+    private static Task UpgradeSchemaAsync(RgcDbContext db) => db.Database.ExecuteSqlRawAsync("""
+        IF COL_LENGTH('Clients', 'UserDisplayName') IS NULL ALTER TABLE Clients ADD UserDisplayName nvarchar(200) NULL;
+        IF COL_LENGTH('Clients', 'WindowsUser') IS NULL ALTER TABLE Clients ADD WindowsUser nvarchar(200) NULL;
+        IF COL_LENGTH('Clients', 'PublicIp') IS NULL ALTER TABLE Clients ADD PublicIp nvarchar(100) NULL;
+        IF COL_LENGTH('Announcements', 'LastResentAtUtc') IS NULL ALTER TABLE Announcements ADD LastResentAtUtc datetime2 NULL;
+        IF OBJECT_ID('ClientActivity') IS NULL
+            CREATE TABLE ClientActivity (
+                Day date NOT NULL,
+                ClientId uniqueidentifier NOT NULL,
+                CONSTRAINT PK_ClientActivity PRIMARY KEY (Day, ClientId));
+        """);
 }
 
 internal static class AdminCli

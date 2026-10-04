@@ -10,6 +10,7 @@
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="BoolToVis" />
+            <v:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis" />
             <v:LocalTimeConverter x:Key="LocalTime" />
             <v:PriorityBrushConverter x:Key="PriorityBrush" />
             <v:PriorityLabelConverter x:Key="PriorityLabel" />

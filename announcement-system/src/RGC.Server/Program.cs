@@ -101,6 +101,8 @@ builder.Services.AddSingleton<ConnectionRegistry>();
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddScoped<ClientDirectory>();
 builder.Services.AddScoped<AnnouncementService>();
+builder.Services.AddScoped<ReportService>();
+builder.Services.AddHostedService<ActivityTracker>();
 
 var app = builder.Build();
 
@@ -201,7 +203,19 @@ app.MapPost("/" + AuthRoutes.Login, async (LoginRequest req, RgcDbContext db, To
 
 var api = app.MapGroup("/api").RequireAuthorization("Admin");
 
-api.MapGet("/clients", (ClientDirectory dir, CancellationToken ct) => dir.GetAllAsync(ct));
+api.MapGet("/clients", (ReportService reports, CancellationToken ct) => reports.GetClientsAsync(ct));
+
+api.MapGet("/clients/{id:guid}/records", (Guid id, ReportService reports, CancellationToken ct) =>
+    reports.GetClientRecordsAsync(id, ct));
+
+// tz = the admin's UTC offset in minutes, so per-day charts follow their calendar.
+api.MapGet("/stats", (ReportService reports, int? days, int? tz, CancellationToken ct) =>
+    reports.GetStatsAsync(days ?? 30, tz ?? 0, ct));
+
+api.MapGet("/people", (ReportService reports, CancellationToken ct) => reports.GetPeopleAsync(ct));
+
+api.MapGet("/people/records", (string user, ReportService reports, CancellationToken ct) =>
+    reports.GetPersonRecordsAsync(user, ct));
 
 api.MapGet("/announcements", (AnnouncementService svc, int? take, CancellationToken ct) =>
     svc.GetHistoryAsync(Math.Clamp(take ?? 500, 1, 5000), ct));
@@ -216,6 +230,9 @@ api.MapPost("/announcements", async (SendAnnouncementRequest req, AnnouncementSe
     var result = await svc.BroadcastAsync(req, AuthSetup.GetActorName(user), ct);
     return Results.Ok(result);
 });
+
+api.MapPost("/announcements/{id:guid}/resend", async (Guid id, AnnouncementService svc, ClaimsPrincipal user, CancellationToken ct) =>
+    await svc.ResendToUnreadAsync(id, AuthSetup.GetActorName(user), ct) is { } result ? Results.Ok(result) : Results.NotFound());
 
 app.MapHub<AgentHub>(HubRoutes.AgentHub);
 app.MapHub<AdminHub>(HubRoutes.AdminHub);

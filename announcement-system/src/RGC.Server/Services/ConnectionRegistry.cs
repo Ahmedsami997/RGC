@@ -17,6 +17,8 @@ public sealed class ConnectionRegistry
 
     public bool HasConnections(Guid clientId) => _connections.Values.Any(v => v == clientId);
 
+    public IReadOnlyCollection<Guid> ConnectedClientIds() => _connections.Values.Distinct().ToList();
+
     public IReadOnlyList<string> ConnectionsFor(Guid clientId) =>
         _connections.Where(kv => kv.Value == clientId).Select(kv => kv.Key).ToList();
 }

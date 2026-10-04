@@ -9,6 +9,7 @@ public class RgcDbContext(DbContextOptions<RgcDbContext> options) : DbContext(op
     public DbSet<ClientComputer> Clients => Set<ClientComputer>();
     public DbSet<Announcement> Announcements => Set<Announcement>();
     public DbSet<AnnouncementRecipient> AnnouncementRecipients => Set<AnnouncementRecipient>();
+    public DbSet<ClientActivity> ClientActivity => Set<ClientActivity>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -26,7 +27,10 @@ public class RgcDbContext(DbContextOptions<RgcDbContext> options) : DbContext(op
             e.ToTable("Clients");
             e.Property(x => x.MachineName).HasMaxLength(100).IsRequired();
             e.Property(x => x.UserName).HasMaxLength(200);
+            e.Property(x => x.UserDisplayName).HasMaxLength(200);
+            e.Property(x => x.WindowsUser).HasMaxLength(200);
             e.Property(x => x.IpAddress).HasMaxLength(100);
+            e.Property(x => x.PublicIp).HasMaxLength(100);
             e.Property(x => x.OsVersion).HasMaxLength(200);
             e.Property(x => x.AgentVersion).HasMaxLength(50);
             e.HasIndex(x => x.MachineName);
@@ -52,6 +56,13 @@ public class RgcDbContext(DbContextOptions<RgcDbContext> options) : DbContext(op
             e.HasOne(x => x.Client).WithMany()
                 .HasForeignKey(x => x.ClientId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => new { x.ClientId, x.AcknowledgedAtUtc });
+        });
+
+        b.Entity<ClientActivity>(e =>
+        {
+            e.ToTable("ClientActivity");
+            e.HasKey(x => new { x.Day, x.ClientId });
+            e.Property(x => x.Day).HasColumnType("date");
         });
 
         // Everything is stored as UTC; make sure values read back are flagged as UTC

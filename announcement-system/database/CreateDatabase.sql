@@ -30,6 +30,7 @@ CREATE TABLE [Announcements] (
     [Priority] int NOT NULL,
     [CreatedAtUtc] datetime2 NOT NULL,
     [CreatedBy] nvarchar(100) NOT NULL,
+    [LastResentAtUtc] datetime2 NULL,
     CONSTRAINT [PK_Announcements] PRIMARY KEY ([Id])
 );
 GO
@@ -39,7 +40,10 @@ CREATE TABLE [Clients] (
     [Id] uniqueidentifier NOT NULL,
     [MachineName] nvarchar(100) NOT NULL,
     [UserName] nvarchar(200) NOT NULL,
+    [UserDisplayName] nvarchar(200) NULL,
+    [WindowsUser] nvarchar(200) NULL,
     [IpAddress] nvarchar(100) NULL,
+    [PublicIp] nvarchar(100) NULL,
     [OsVersion] nvarchar(200) NULL,
     [AgentVersion] nvarchar(50) NOT NULL,
     [IsOnline] bit NOT NULL,
@@ -61,6 +65,14 @@ CREATE TABLE [AnnouncementRecipients] (
     CONSTRAINT [PK_AnnouncementRecipients] PRIMARY KEY ([AnnouncementId], [ClientId]),
     CONSTRAINT [FK_AnnouncementRecipients_Announcements_AnnouncementId] FOREIGN KEY ([AnnouncementId]) REFERENCES [Announcements] ([Id]) ON DELETE CASCADE,
     CONSTRAINT [FK_AnnouncementRecipients_Clients_ClientId] FOREIGN KEY ([ClientId]) REFERENCES [Clients] ([Id]) ON DELETE CASCADE
+);
+GO
+
+
+CREATE TABLE [ClientActivity] (
+    [Day] date NOT NULL,
+    [ClientId] uniqueidentifier NOT NULL,
+    CONSTRAINT [PK_ClientActivity] PRIMARY KEY ([Day], [ClientId])
 );
 GO
 

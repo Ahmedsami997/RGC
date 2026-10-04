@@ -45,7 +45,9 @@ public sealed record AgentRegistration(
     string UserName,
     string? IpAddress,
     string AgentVersion,
-    string? OsVersion);
+    string? OsVersion,
+    // Windows account on the PC (older agents leave it empty and send it as UserName).
+    string? WindowsUser = null);
 
 public sealed record AnnouncementMessage(
     Guid Id,
@@ -76,7 +78,14 @@ public sealed record ClientDto(
     string AgentVersion,
     bool IsOnline,
     DateTime FirstSeenUtc,
-    DateTime LastSeenUtc);
+    DateTime LastSeenUtc,
+    string? WindowsUser = null,
+    string? UserDisplayName = null,
+    string? PublicIp = null,
+    int Received = 0,
+    int Read = 0,
+    DateTime? LastReadAtUtc = null,
+    double? AvgMinutesToRead = null);
 
 public sealed record AnnouncementSummaryDto(
     Guid Id,
@@ -108,6 +117,55 @@ public sealed record AuthConfigDto(
     string? Scope,
     bool LocalLoginEnabled,
     bool AgentKeyEnabled);
+
+/// <summary>One point of a per-day series (Day is a local calendar date).</summary>
+public sealed record DailyPointDto(DateTime Day, int Value);
+
+public sealed record PriorityStatDto(AnnouncementPriority Priority, int Announcements, int Recipients, int Read);
+
+/// <summary>A person, keyed by Microsoft 365 email (or Windows account for agent-key PCs).</summary>
+public sealed record PersonSummaryDto(
+    string User,
+    string? DisplayName,
+    string Computers,
+    int Received,
+    int Read,
+    DateTime? LastReadAtUtc,
+    double? AvgMinutesToRead);
+
+public sealed record StatsDto(
+    int Days,
+    int TotalPcs,
+    int OnlinePcs,
+    int ActivePcs,
+    int Announcements,
+    int Recipients,
+    int Delivered,
+    int Read,
+    int WaitingToBeRead,
+    double? AvgMinutesToRead,
+    double? MedianMinutesToRead,
+    double? AvgSecondsOnScreen,
+    List<DailyPointDto> ActivePcsPerDay,
+    List<DailyPointDto> AnnouncementsPerDay,
+    List<DailyPointDto> ReadsPerDay,
+    List<PriorityStatDto> ByPriority,
+    List<PersonSummaryDto> MostUnread);
+
+/// <summary>One announcement as received on one PC (per-person and per-PC reports).</summary>
+public sealed record ReadRecordDto(
+    Guid AnnouncementId,
+    string Title,
+    AnnouncementPriority Priority,
+    DateTime CreatedAtUtc,
+    Guid ClientId,
+    string MachineName,
+    string User,
+    DateTime? DeliveredAtUtc,
+    DateTime? DisplayedAtUtc,
+    DateTime? AcknowledgedAtUtc);
+
+public sealed record ResendResultDto(int Unread, int SentNow);
 
 public sealed record MeDto(string Name, string? Email, bool IsAdmin);
 

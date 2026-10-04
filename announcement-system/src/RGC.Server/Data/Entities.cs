@@ -19,8 +19,14 @@ public class ClientComputer
 {
     public Guid Id { get; set; }
     public string MachineName { get; set; } = "";
+    /// <summary>Microsoft 365 email when signed in, otherwise the Windows account.</summary>
     public string UserName { get; set; } = "";
+    public string? UserDisplayName { get; set; }
+    public string? WindowsUser { get; set; }
+    /// <summary>Address on the PC's own network.</summary>
     public string? IpAddress { get; set; }
+    /// <summary>Address the server saw the connection come from.</summary>
+    public string? PublicIp { get; set; }
     public string? OsVersion { get; set; }
     public string AgentVersion { get; set; } = "";
     public bool IsOnline { get; set; }
@@ -36,6 +42,8 @@ public class Announcement
     public AnnouncementPriority Priority { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public string CreatedBy { get; set; } = "";
+    /// <summary>Last "resend to unread"; restarts the pending-delivery window.</summary>
+    public DateTime? LastResentAtUtc { get; set; }
     public List<AnnouncementRecipient> Recipients { get; set; } = new();
 }
 
@@ -54,4 +62,11 @@ public class AnnouncementRecipient
     /// <summary>When the server received the acknowledgement (server clock).</summary>
     public DateTime? AckReceivedAtUtc { get; set; }
     public string? AcknowledgedBy { get; set; }
+}
+
+/// <summary>One row per PC per (UTC) day it was connected; feeds the "active PCs per day" chart.</summary>
+public class ClientActivity
+{
+    public DateTime Day { get; set; }
+    public Guid ClientId { get; set; }
 }
