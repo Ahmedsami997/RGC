@@ -117,3 +117,15 @@ dotnet run --project src/RGC.Server
 Server API (all under `/api`, admin JWT required except login/health):
 `POST /auth/login`, `GET /clients`, `GET /announcements`, `GET /announcements/{id}/recipients`, `POST /announcements`, `GET /health`.
 Hubs: `/hubs/agent` (agent key header `X-RGC-Agent-Key`) and `/hubs/admin` (admin JWT).
+
+## Mac staff computers
+
+`src/RGC.MacAgent` is the agent for macOS (Avalonia, menu-bar app). Same server, same Microsoft 365
+sign-in, same locked popup as the Windows agent.
+
+- Build: `bash deploy/Publish-Mac.sh` → `publish/RGC-Mac-Agent.zip` (Apple silicon and Intel).
+- Install on a Mac: unzip, then in Terminal `bash ~/Downloads/RGC-Mac-Agent/install.sh`
+  (or right-click **Install RGC.command** → Open). It installs the .NET 8 runtime for the user if
+  needed, puts `RGC.app` in Applications, signs it locally (ad-hoc, no Apple Developer account) and
+  starts it at every login. Remove with `uninstall.sh`.
+- Logs: `~/Library/Logs/RGC`.
