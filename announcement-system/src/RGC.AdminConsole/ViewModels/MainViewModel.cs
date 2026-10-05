@@ -34,6 +34,7 @@ public sealed partial class MainViewModel : ObservableObject
         RecipientsView.Filter = o => o is RecipientRow r && MatchesRecipientFilter(r);
 
         // PCs connect and disconnect in bursts (everyone logs on at 8am): coalesce the reloads.
+        InitializeTargets();
         _clientsDebounce = Debounce(async () => await LoadClientsAsync(), TimeSpan.FromSeconds(2));
         _historyDebounce = Debounce(async () => await LoadHistoryAsync());
         _reportsDebounce = Debounce(async () => await LoadReportsAsync(), TimeSpan.FromSeconds(4));
@@ -165,6 +166,7 @@ public sealed partial class MainViewModel : ObservableObject
         _selectedComputer = Clients.FirstOrDefault(c => c.Id == selectedId);
         OnPropertyChanged(nameof(SelectedComputer));
         OnPropertyChanged(nameof(HasComputerSelection));
+        RebuildTargets();
         OnPropertyChanged(nameof(TotalClients));
         OnPropertyChanged(nameof(OnlineClients));
         OnPropertyChanged(nameof(OfflineClients));
@@ -182,25 +184,28 @@ public sealed partial class MainViewModel : ObservableObject
 
     public string TitleCount => $"{ComposeTitle.Length} / 200";
     public string MessageCount => $"{ComposeMessage.Length} / 8000";
-    public string RecipientSummary => $"Will be delivered immediately to {OnlineClients} online PC(s). " +
-                                      $"{OfflineClients} offline PC(s) receive it when they next connect.";
+    public string RecipientSummary => SendToSelected ? TargetSummary() :
+        $"Will be delivered immediately to {OnlineClients} online PC(s). " +
+        $"{OfflineClients} offline PC(s) receive it when they next connect.";
 
     public ICommand SendCommand { get; }
     public ICommand ClearComposeCommand { get; }
 
     private bool CanSend() =>
         !string.IsNullOrWhiteSpace(ComposeTitle) && !string.IsNullOrWhiteSpace(ComposeMessage) &&
-        ComposeTitle.Length <= 200 && ComposeMessage.Length <= 8000;
+        ComposeTitle.Length <= 200 && ComposeMessage.Length <= 8000 &&
+        (!SendToSelected || SelectedTargetCount > 0);
 
     private async Task SendAsync()
     {
         var confirm = MessageBox.Show(
-            $"Broadcast this {ComposePriority.ToString().ToUpperInvariant()} announcement to all computers?\n\n\"{ComposeTitle.Trim()}\"\n\n{RecipientSummary}",
-            "RGC – Confirm broadcast", MessageBoxButton.YesNo,
+            $"Send this {ComposePriority.ToString().ToUpperInvariant()} announcement to " +
+            $"{(SendToSelected ? $"{SelectedTargetCount} selected computer(s)" : "all computers")}?\n\n\"{ComposeTitle.Trim()}\"\n\n{RecipientSummary}",
+            "RGC – Confirm send", MessageBoxButton.YesNo,
             ComposePriority == AnnouncementPriority.Critical ? MessageBoxImage.Warning : MessageBoxImage.Question);
         if (confirm != MessageBoxResult.Yes) return;
 
-        var result = await Guard(() => _api.SendAnnouncementAsync(new SendAnnouncementRequest(ComposeTitle, ComposeMessage, ComposePriority)));
+        var result = await Guard(() => _api.SendAnnouncementAsync(new SendAnnouncementRequest(ComposeTitle, ComposeMessage, ComposePriority, TargetIds())));
         if (result is null) return;
 
         StatusMessage = $"Announcement \"{result.Title}\" sent to {result.TotalRecipients} PC(s) at {result.CreatedAtUtc.ToLocalTime():HH:mm:ss}.";
@@ -215,6 +220,8 @@ public sealed partial class MainViewModel : ObservableObject
         ComposeTitle = "";
         ComposeMessage = "";
         ComposePriority = AnnouncementPriority.Normal;
+        foreach (var t in Targets) t.IsSelected = false;
+        SendToSelected = false;
     }
 
     // ---------------------------------------------------------------- history

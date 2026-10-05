@@ -58,7 +58,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <TextBlock Text="{TemplateBinding Content}" TextDecorations="Underline" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}" TextDecorations="Underline" VerticalAlignment="Center" />
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -372,7 +372,10 @@
                     <DockPanel Visibility="{Binding HasComputerSelection, Converter={StaticResource BoolToVis}}">
                         <StackPanel DockPanel.Dock="Top" DataContext="{Binding SelectedComputer}">
                             <TextBlock Text="{Binding MachineName}" FontSize="18" FontWeight="Bold" Foreground="{StaticResource Brand.Ink}" />
-                            <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource OnlineCell}" Margin="0,4,0,12" HorizontalAlignment="Left" />
+                            <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource OnlineCell}" Margin="0,4,0,8" HorizontalAlignment="Left" />
+                            <Button Content="Send announcement to this computer" HorizontalAlignment="Left" Margin="0,0,0,12" Padding="12,6"
+                                    Style="{StaticResource Button.Primary}"
+                                    Command="{Binding DataContext.SendToComputerCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
@@ -526,7 +529,7 @@
 
             <StackPanel Grid.ColumnSpan="3">
                 <TextBlock Text="New announcement" Style="{StaticResource PageTitle}" />
-                <TextBlock Text="Broadcast a message to every computer. It appears immediately as a popup that stays on top until read." Style="{StaticResource PageSubtitle}" />
+                <TextBlock Text="Send a message to every computer or only the ones you choose. It appears immediately as a popup that stays on top until read." Style="{StaticResource PageSubtitle}" />
             </StackPanel>
 
             <Border Grid.Row="1" Style="{StaticResource Card}">
@@ -574,7 +577,7 @@
                         <TextBlock Text="{Binding RecipientSummary}" Foreground="{StaticResource Brand.Muted}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,12" />
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                             <Button Content="Clear" Command="{Binding ClearComposeCommand}" Style="{StaticResource Button.Secondary}" Margin="0,0,10,0" />
-                            <Button Content="Broadcast to all PCs" Command="{Binding SendCommand}" Style="{StaticResource Button.Primary}" />
+                            <Button Content="{Binding SendButtonText}" Command="{Binding SendCommand}" Style="{StaticResource Button.Primary}" />
                         </StackPanel>
                     </StackPanel>
 
@@ -584,8 +587,68 @@
                 </DockPanel>
             </Border>
 
-            <!-- Live preview of the popup -->
-            <StackPanel Grid.Row="1" Grid.Column="2">
+            <!-- Who receives it, and a live preview of the popup -->
+            <ScrollViewer Grid.Row="1" Grid.Column="2" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock Text="SEND TO" Style="{StaticResource Text.Label}" />
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                    <RadioButton Style="{StaticResource PriorityOption}" GroupName="Audience"
+                                 Tag="{StaticResource Brand.GreenDark}" IsChecked="{Binding SendToAll}">
+                        <StackPanel>
+                            <TextBlock Text="All computers" FontWeight="Bold" Foreground="{StaticResource Brand.Ink}" />
+                            <TextBlock Text="Everyone with RGC" FontSize="11" Foreground="{StaticResource Brand.Muted}" />
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton Style="{StaticResource PriorityOption}" GroupName="Audience"
+                                 Tag="{StaticResource Brand.GreenDark}" IsChecked="{Binding SendToSelected}">
+                        <StackPanel>
+                            <TextBlock Text="Selected computers" FontWeight="Bold" Foreground="{StaticResource Brand.Ink}" />
+                            <TextBlock Text="Choose who gets it" FontSize="11" Foreground="{StaticResource Brand.Muted}" />
+                        </StackPanel>
+                    </RadioButton>
+                </StackPanel>
+
+                <Border Style="{StaticResource Card}" Padding="0" Margin="0,0,0,16"
+                        Visibility="{Binding SendToSelected, Converter={StaticResource BoolToVis}}">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" Padding="12,10" BorderBrush="{StaticResource Brand.Line}" BorderThickness="0,0,0,1">
+                            <DockPanel>
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding SelectedTargetText}" FontWeight="SemiBold" Foreground="{StaticResource Brand.Ink}"
+                                               VerticalAlignment="Center" Margin="10,0,10,0" />
+                                    <Button Content="All shown" Command="{Binding SelectAllTargetsCommand}" Style="{StaticResource LinkButton}" Margin="0,0,10,0" />
+                                    <Button Content="Clear" Command="{Binding ClearTargetsCommand}" Style="{StaticResource LinkButton}" />
+                                </StackPanel>
+                                <TextBox Text="{Binding TargetFilter, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Input.Text}"
+                                         ToolTip="Search computer or person" />
+                            </DockPanel>
+                        </Border>
+                        <ListBox ItemsSource="{Binding TargetsView}" Height="230" BorderThickness="0"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="10,5" />
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    <Setter Property="Focusable" Value="False" />
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding IsSelected}" VerticalContentAlignment="Center">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Ellipse Width="8" Height="8" Margin="4,0,8,0" VerticalAlignment="Center"
+                                                     Fill="{Binding IsOnline, Converter={StaticResource OnlineBrush}}" />
+                                            <TextBlock Text="{Binding MachineName}" FontWeight="SemiBold" Foreground="{StaticResource Brand.Ink}" />
+                                            <TextBlock Text="{Binding UserText}" Foreground="{StaticResource Brand.Muted}" Margin="8,0,0,0"
+                                                       TextTrimming="CharacterEllipsis" MaxWidth="200" />
+                                        </StackPanel>
+                                    </CheckBox>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+                </Border>
+
                 <TextBlock Text="PREVIEW ON EMPLOYEE PCS" Style="{StaticResource Text.Label}" />
                 <Border CornerRadius="8" BorderBrush="{StaticResource Brand.Line}" BorderThickness="1" ClipToBounds="True">
                     <StackPanel>
@@ -629,6 +692,7 @@
                 <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Brand.Muted}" Margin="0,10,0,0"
                            Text="Employees cannot close the popup (no X button, Alt+F4 disabled) until the countdown ends and they have scrolled to the end of the message. Their acknowledgement time is recorded." />
             </StackPanel>
+            </ScrollViewer>
         </Grid>
 
         <!-- ============================== History & status -->
@@ -653,6 +717,7 @@
                         <DataGridTextColumn Header="SENT" Binding="{Binding CreatedAtUtc, Converter={StaticResource LocalTime}, ConverterParameter='dd MMM yyyy HH:mm'}" Width="150" />
                         <DataGridTemplateColumn Header="PRIORITY" Width="110" CellTemplate="{StaticResource PriorityPill}" />
                         <DataGridTextColumn Header="TITLE" Binding="{Binding Title}" Width="*" FontWeight="SemiBold" />
+                        <DataGridTextColumn Header="SENT TO" Binding="{Binding Audience}" Width="150" />
                         <DataGridTextColumn Header="SENT BY" Binding="{Binding CreatedBy}" Width="120" />
                         <DataGridTextColumn Header="DELIVERED" Binding="{Binding DeliveredText}" Width="100" />
                         <DataGridTemplateColumn Header="READ" Width="160">

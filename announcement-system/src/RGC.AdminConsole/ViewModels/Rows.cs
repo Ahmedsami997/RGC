@@ -10,6 +10,7 @@ public sealed class AnnouncementRow(AnnouncementSummaryDto dto) : ObservableObje
     public AnnouncementPriority Priority { get; } = dto.Priority;
     public DateTime CreatedAtUtc { get; } = dto.CreatedAtUtc;
     public string CreatedBy { get; } = dto.CreatedBy;
+    public string Audience { get; } = dto.Audience ?? "All computers";
 
     private int _total = dto.TotalRecipients, _delivered = dto.Delivered, _acknowledged = dto.Acknowledged;
     public int TotalRecipients { get => _total; private set { if (Set(ref _total, value)) Notify(); } }

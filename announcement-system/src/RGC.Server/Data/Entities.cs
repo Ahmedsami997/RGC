@@ -44,6 +44,8 @@ public class Announcement
     public string CreatedBy { get; set; } = "";
     /// <summary>Last "resend to unread"; restarts the pending-delivery window.</summary>
     public DateTime? LastResentAtUtc { get; set; }
+    /// <summary>"All computers" or "N selected computers".</summary>
+    public string? Audience { get; set; }
     public List<AnnouncementRecipient> Recipients { get; set; } = new();
 }
 

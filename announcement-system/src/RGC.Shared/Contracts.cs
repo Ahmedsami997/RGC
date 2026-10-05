@@ -67,7 +67,12 @@ public sealed record LoginRequest(string Username, string Password);
 
 public sealed record LoginResponse(string Token, DateTime ExpiresAtUtc, string Username, string DisplayName);
 
-public sealed record SendAnnouncementRequest(string Title, string Message, AnnouncementPriority Priority);
+/// <param name="ClientIds">Computers to send to; null or empty sends to every computer.</param>
+public sealed record SendAnnouncementRequest(
+    string Title,
+    string Message,
+    AnnouncementPriority Priority,
+    List<Guid>? ClientIds = null);
 
 public sealed record ClientDto(
     Guid Id,
@@ -96,7 +101,9 @@ public sealed record AnnouncementSummaryDto(
     string CreatedBy,
     int TotalRecipients,
     int Delivered,
-    int Acknowledged);
+    int Acknowledged,
+    // "All computers" or e.g. "3 selected computers"; null on announcements from before 1.2.
+    string? Audience = null);
 
 public sealed record RecipientStatusDto(
     Guid AnnouncementId,

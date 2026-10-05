@@ -31,6 +31,7 @@ CREATE TABLE [Announcements] (
     [CreatedAtUtc] datetime2 NOT NULL,
     [CreatedBy] nvarchar(100) NOT NULL,
     [LastResentAtUtc] datetime2 NULL,
+    [Audience] nvarchar(100) NULL,
     CONSTRAINT [PK_Announcements] PRIMARY KEY ([Id])
 );
 GO

@@ -46,6 +46,7 @@ internal static class Startup
         IF COL_LENGTH('Clients', 'WindowsUser') IS NULL ALTER TABLE Clients ADD WindowsUser nvarchar(200) NULL;
         IF COL_LENGTH('Clients', 'PublicIp') IS NULL ALTER TABLE Clients ADD PublicIp nvarchar(100) NULL;
         IF COL_LENGTH('Announcements', 'LastResentAtUtc') IS NULL ALTER TABLE Announcements ADD LastResentAtUtc datetime2 NULL;
+        IF COL_LENGTH('Announcements', 'Audience') IS NULL ALTER TABLE Announcements ADD Audience nvarchar(100) NULL;
         IF OBJECT_ID('ClientActivity') IS NULL
             CREATE TABLE ClientActivity (
                 Day date NOT NULL,

@@ -20,11 +20,22 @@ public sealed class AnnouncementService(
     public async Task<AnnouncementSummaryDto> BroadcastAsync(SendAnnouncementRequest req, string adminName, CancellationToken ct)
     {
         var now = DateTime.UtcNow;
-        var activeSince = now.AddDays(-_opt.InactiveClientDays);
-        var clientIds = await db.Clients
-            .Where(c => c.IsOnline || c.LastSeenUtc >= activeSince)
-            .Select(c => c.Id)
-            .ToListAsync(ct);
+        var targeted = req.ClientIds is { Count: > 0 };
+        List<Guid> clientIds;
+        if (targeted)
+        {
+            // Chosen computers: send even if they haven't been seen for a while.
+            var wanted = req.ClientIds!.Distinct().ToList();
+            clientIds = await db.Clients.Where(c => wanted.Contains(c.Id)).Select(c => c.Id).ToListAsync(ct);
+        }
+        else
+        {
+            var activeSince = now.AddDays(-_opt.InactiveClientDays);
+            clientIds = await db.Clients
+                .Where(c => c.IsOnline || c.LastSeenUtc >= activeSince)
+                .Select(c => c.Id)
+                .ToListAsync(ct);
+        }
 
         var announcement = new Announcement
         {
@@ -34,20 +45,32 @@ public sealed class AnnouncementService(
             Priority = req.Priority,
             CreatedAtUtc = now,
             CreatedBy = adminName,
+            Audience = targeted ? $"{clientIds.Count} selected computer{(clientIds.Count == 1 ? "" : "s")}" : "All computers",
             Recipients = clientIds.Select(id => new AnnouncementRecipient { ClientId = id }).ToList()
         };
 
         db.Announcements.Add(announcement);
         await db.SaveChangesAsync(ct);
 
-        await agentHub.Clients.Group(AgentHub.AgentsGroup)
-            .SendAsync(AgentClientMethods.ReceiveAnnouncement, ToMessage(announcement), ct);
+        if (targeted)
+        {
+            // Only the chosen computers that are online now; the rest get it when they reconnect.
+            var connections = clientIds.SelectMany(registry.ConnectionsFor).ToList();
+            if (connections.Count > 0)
+                await agentHub.Clients.Clients(connections)
+                    .SendAsync(AgentClientMethods.ReceiveAnnouncement, ToMessage(announcement), ct);
+        }
+        else
+        {
+            await agentHub.Clients.Group(AgentHub.AgentsGroup)
+                .SendAsync(AgentClientMethods.ReceiveAnnouncement, ToMessage(announcement), ct);
+        }
 
-        log.LogInformation("Announcement {Id} '{Title}' ({Priority}) broadcast by {Admin} to {Count} PCs",
-            announcement.Id, announcement.Title, announcement.Priority, adminName, clientIds.Count);
+        log.LogInformation("Announcement {Id} '{Title}' ({Priority}) sent by {Admin} to {Audience} ({Count} PCs)",
+            announcement.Id, announcement.Title, announcement.Priority, adminName, announcement.Audience, clientIds.Count);
 
         var summary = new AnnouncementSummaryDto(announcement.Id, announcement.Title, announcement.Message,
-            announcement.Priority, announcement.CreatedAtUtc, announcement.CreatedBy, clientIds.Count, 0, 0);
+            announcement.Priority, announcement.CreatedAtUtc, announcement.CreatedBy, clientIds.Count, 0, 0, announcement.Audience);
         await adminHub.Clients.All.SendAsync(AdminClientMethods.AnnouncementCreated, summary, ct);
         return summary;
     }
@@ -141,7 +164,8 @@ public sealed class AnnouncementService(
             .Select(a => new AnnouncementSummaryDto(a.Id, a.Title, a.Message, a.Priority, a.CreatedAtUtc, a.CreatedBy,
                 a.Recipients.Count,
                 a.Recipients.Count(r => r.DeliveredAtUtc != null),
-                a.Recipients.Count(r => r.AcknowledgedAtUtc != null)))
+                a.Recipients.Count(r => r.AcknowledgedAtUtc != null),
+                a.Audience))
             .ToListAsync(ct);
 
     public async Task<List<RecipientStatusDto>> GetRecipientsAsync(Guid announcementId, CancellationToken ct) =>
@@ -172,6 +196,7 @@ public sealed class AnnouncementService(
         if (req.Title.Trim().Length > _opt.MaxTitleLength) return $"Title must be at most {_opt.MaxTitleLength} characters.";
         if (req.Message.Trim().Length > _opt.MaxMessageLength) return $"Message must be at most {_opt.MaxMessageLength} characters.";
         if (!Enum.IsDefined(req.Priority)) return "Invalid priority.";
+        if (req.ClientIds is { Count: > 5000 }) return "Too many computers selected.";
         return null;
     }
 

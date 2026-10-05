@@ -42,6 +42,7 @@ public class RgcDbContext(DbContextOptions<RgcDbContext> options) : DbContext(op
             e.Property(x => x.Title).HasMaxLength(200).IsRequired();
             e.Property(x => x.Message).IsRequired();
             e.Property(x => x.CreatedBy).HasMaxLength(100);
+            e.Property(x => x.Audience).HasMaxLength(100);
             e.Property(x => x.Priority).HasConversion<int>();
             e.HasIndex(x => x.CreatedAtUtc);
         });
