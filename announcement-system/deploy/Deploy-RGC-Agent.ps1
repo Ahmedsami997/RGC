@@ -61,7 +61,9 @@ try {
 
     # 5. Start now if someone is logged on interactively (not when running as SYSTEM from GPO)
     $isSystem = [Security.Principal.WindowsIdentity]::GetCurrent().IsSystem
-    if (-not $isSystem) { Start-Process -FilePath $exe -ArgumentList "--autostart"; Log "Agent started" }
+    # Started through Explorer so it runs as the signed-in user, not elevated: the Microsoft 365
+    # sign-in (Windows account broker) fails with 0x80070520 in an elevated or different-user process.
+    if (-not $isSystem) { Start-Process -FilePath "explorer.exe" -ArgumentList "`"$exe`""; Log "Agent started" }
 
     Log "Done."
     exit 0
