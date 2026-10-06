@@ -49,8 +49,11 @@ try {
     Log "Agent copied to $InstallDir"
 
     # 3. Settings (machine-wide) and a stable id for this PC
+    # Write to a temp file and swap it in, so a power cut never leaves a half-written settings file.
+    $settingsFile = Join-Path $dataDir "agentsettings.json"
     @{ ServerUrl = $ServerUrl; AgentKey = ""; CountdownSeconds = 10; AutoStart = $true; AllowUserExit = $false } |
-        ConvertTo-Json | Set-Content -Path (Join-Path $dataDir "agentsettings.json") -Encoding UTF8
+        ConvertTo-Json | Set-Content -Path "$settingsFile.tmp" -Encoding UTF8
+    Move-Item "$settingsFile.tmp" $settingsFile -Force
     $idFile = Join-Path $dataDir "client-id"
     if (-not (Test-Path $idFile)) { [guid]::NewGuid().ToString() | Set-Content -Path $idFile -Encoding ASCII }
 

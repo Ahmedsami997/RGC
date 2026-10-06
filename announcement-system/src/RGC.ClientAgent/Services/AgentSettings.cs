@@ -5,7 +5,10 @@ namespace RGC.ClientAgent.Services;
 
 public sealed class AgentSettings
 {
-    public string ServerUrl { get; set; } = "http://localhost:5080";
+    /// <summary>Used when no settings file can be read, so a damaged file doesn't take the PC offline.</summary>
+    public const string DefaultServerUrl = "https://rgc-announcements-ayakghhpdhfkbydr.uaenorth-01.azurewebsites.net";
+
+    public string ServerUrl { get; set; } = DefaultServerUrl;
     public string AgentKey { get; set; } = "";
     public int CountdownSeconds { get; set; } = 10;
     public bool AutoStart { get; set; } = true;
@@ -29,7 +32,14 @@ public sealed class AgentSettings
             if (!File.Exists(path)) continue;
             try
             {
-                var loaded = JsonSerializer.Deserialize<AgentSettings>(File.ReadAllText(path), options);
+                // A file cut short by a power cut or crash can be empty or full of zero bytes: skip it.
+                var json = File.ReadAllText(path).Trim('\0', '\uFEFF', ' ', '\r', '\n', '\t');
+                if (json.Length == 0)
+                {
+                    AgentLog.Error($"Settings file {path} is empty or damaged; ignoring it");
+                    continue;
+                }
+                var loaded = JsonSerializer.Deserialize<AgentSettings>(json, options);
                 if (loaded is not null) settings = loaded;
             }
             catch (Exception ex)
@@ -39,6 +49,7 @@ public sealed class AgentSettings
         }
 
         settings.CountdownSeconds = Math.Clamp(settings.CountdownSeconds, 0, 300);
+        if (string.IsNullOrWhiteSpace(settings.ServerUrl)) settings.ServerUrl = DefaultServerUrl;
         settings.ServerUrl = settings.ServerUrl.TrimEnd('/');
         return settings;
     }
