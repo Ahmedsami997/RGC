@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Text.RegularExpressions;
@@ -23,6 +24,15 @@ public static partial class RemoteAssistance
         if (!File.Exists(msra))
             throw new ApiException("Windows Remote Assistance (msra.exe) is not available on this PC.");
 
-        Process.Start(new ProcessStartInfo(msra) { ArgumentList = { "/offerRA", machineName }, UseShellExecute = false });
+        // msra needs administrator rights to offer help: start it through the shell so Windows
+        // shows the UAC prompt instead of failing with "The requested operation requires elevation".
+        try
+        {
+            Process.Start(new ProcessStartInfo(msra, $"/offerRA {machineName}") { UseShellExecute = true, Verb = "runas" });
+        }
+        catch (Win32Exception ex) when (ex.NativeErrorCode == 1223) // ERROR_CANCELLED
+        {
+            throw new ApiException("Remote Assistance was cancelled (administrator permission is needed to connect).");
+        }
     }
 }
