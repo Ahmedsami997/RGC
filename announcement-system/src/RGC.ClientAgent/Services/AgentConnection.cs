@@ -59,7 +59,7 @@ public sealed class AgentConnection : IAsyncDisposable
                 var config = await http.GetFromJsonAsync<AuthConfigDto>(AuthRoutes.Config, _cts.Token);
                 if (config?.EntraEnabled == true)
                 {
-                    _entra = new EntraSignIn(config);
+                    _entra = new EntraSignIn(config, "agent");
                     AgentLog.Info("Server uses Microsoft 365 sign-in");
                 }
                 return;

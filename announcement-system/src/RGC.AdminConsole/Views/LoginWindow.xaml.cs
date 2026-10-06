@@ -47,7 +47,7 @@ public partial class LoginWindow : Window
             if (config is not { EntraEnabled: true })
                 throw new ApiException("Microsoft 365 sign-in isn't set up on this server yet. Use a local admin account.");
 
-            var entra = new EntraSignIn(config);
+            var entra = new EntraSignIn(config, "admin");
             // Silent first (already signed in on this PC), otherwise the Microsoft sign-in window.
             if (await entra.TryGetTokenSilentlyAsync() is null)
                 await entra.SignInInteractiveAsync(new WindowInteropHelper(this).Handle);
