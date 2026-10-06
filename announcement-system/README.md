@@ -109,13 +109,23 @@ The Admin Console needs no install – run `RGC.Admin.exe` and enter the server 
 ```
 Logs: `%LocalAppData%\RGC\Logs\agent-YYYYMMDD.log` (connections, every announcement received and acknowledged).
 
+### IT support: Connect and Chat
+On the Admin Console's **Computers** page, select a PC:
+- **Connect** starts Windows Remote Assistance (`msra /offerRA <PC>`). The user on that PC clicks **Yes**,
+  then IT sees the screen and can request control. Works for domain PCs on the club network.
+  One-time setup on the domain controller: `deploy\Enable-RGC-RemoteAssistance.ps1` (adds the
+  "Offer Remote Assistance" policy and firewall rules to the "RGC Agent" GPO). The Admin Console
+  must be run by a member of the helpers group (default *Domain Admins*).
+- **Chat** opens a conversation with the person using the PC (stored in `ChatMessages`; live only, the PC
+  must be online). Staff can also start one from the tray icon: **Message IT support...**.
+
 ## Development
 ```bash
 dotnet build RGC.sln            # builds everything (WPF projects build on Windows; on Linux/macOS EnableWindowsTargeting is set)
 dotnet run --project src/RGC.Server
 ```
 Server API (all under `/api`, admin JWT required except login/health):
-`POST /auth/login`, `GET /clients`, `GET /announcements`, `GET /announcements/{id}/recipients`, `POST /announcements`, `GET /health`.
+`POST /auth/login`, `GET /clients`, `GET /announcements`, `GET /announcements/{id}/recipients`, `POST /announcements`, `GET|POST /clients/{id}/chat`, `GET /health`.
 Hubs: `/hubs/agent` (agent key header `X-RGC-Agent-Key`) and `/hubs/admin` (admin JWT).
 
 ## Mac staff computers

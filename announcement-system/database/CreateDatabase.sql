@@ -78,6 +78,22 @@ CREATE TABLE [ClientActivity] (
 GO
 
 
+CREATE TABLE [ChatMessages] (
+    [Id] bigint NOT NULL IDENTITY,
+    [ClientId] uniqueidentifier NOT NULL,
+    [FromAdmin] bit NOT NULL,
+    [Author] nvarchar(200) NOT NULL,
+    [Text] nvarchar(2000) NOT NULL,
+    [SentAtUtc] datetime2 NOT NULL,
+    CONSTRAINT [PK_ChatMessages] PRIMARY KEY ([Id])
+);
+GO
+
+
+CREATE INDEX [IX_ChatMessages_ClientId_SentAtUtc] ON [ChatMessages] ([ClientId], [SentAtUtc]);
+GO
+
+
 CREATE UNIQUE INDEX [IX_AdminUsers_Username] ON [AdminUsers] ([Username]);
 GO
 

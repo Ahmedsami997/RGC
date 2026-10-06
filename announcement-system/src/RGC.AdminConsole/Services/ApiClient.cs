@@ -96,6 +96,17 @@ public sealed class ApiClient : IDisposable
         return (await res.Content.ReadFromJsonAsync<AnnouncementSummaryDto>())!;
     }
 
+    public Task<List<ChatMessageDto>> GetChatAsync(Guid clientId) =>
+        GetAsync<List<ChatMessageDto>>($"api/clients/{clientId}/chat");
+
+    public async Task<ChatMessageDto> SendChatAsync(Guid clientId, string text)
+    {
+        using var msg = new HttpRequestMessage(HttpMethod.Post, $"api/clients/{clientId}/chat") { Content = JsonContent.Create(new SendChatRequest(text)) };
+        using var res = await SendAsync(msg);
+        await EnsureSuccessAsync(res);
+        return (await res.Content.ReadFromJsonAsync<ChatMessageDto>())!;
+    }
+
     private async Task<T> GetAsync<T>(string url)
     {
         using var msg = new HttpRequestMessage(HttpMethod.Get, url);

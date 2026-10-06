@@ -13,6 +13,7 @@ public sealed class AgentHub(
     ConnectionRegistry registry,
     ClientDirectory directory,
     AnnouncementService announcements,
+    ChatService chat,
     IOptions<AnnouncementOptions> options,
     IOptions<AuthModeOptions> authMode,
     ILogger<AgentHub> log) : Hub
@@ -79,6 +80,17 @@ public sealed class AgentHub(
         if (AuthSetup.IsEntraUser(Context.User) && AuthSetup.GetEmail(Context.User) is { } email)
             ack = ack with { UserName = email };
         await announcements.AcknowledgeAsync(ack, clientId, Context.ConnectionAborted);
+    }
+
+    /// <summary>The PC's user writes to IT support.</summary>
+    public async Task SendChat(string text)
+    {
+        var clientId = RequireClient();
+        if (ChatService.Validate(text) is { } error) throw new HubException(error);
+        var author = AuthSetup.IsEntraUser(Context.User)
+            ? AuthSetup.GetDisplayName(Context.User) ?? AuthSetup.GetEmail(Context.User) ?? "PC user"
+            : "PC user";
+        await chat.SendFromPcAsync(clientId, text, author, Context.ConnectionAborted);
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)

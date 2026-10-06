@@ -52,6 +52,17 @@ internal static class Startup
                 Day date NOT NULL,
                 ClientId uniqueidentifier NOT NULL,
                 CONSTRAINT PK_ClientActivity PRIMARY KEY (Day, ClientId));
+        IF OBJECT_ID('ChatMessages') IS NULL
+        BEGIN
+            CREATE TABLE ChatMessages (
+                Id bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_ChatMessages PRIMARY KEY,
+                ClientId uniqueidentifier NOT NULL,
+                FromAdmin bit NOT NULL,
+                Author nvarchar(200) NOT NULL,
+                Text nvarchar(2000) NOT NULL,
+                SentAtUtc datetime2 NOT NULL);
+            CREATE INDEX IX_ChatMessages_ClientId_SentAtUtc ON ChatMessages (ClientId, SentAtUtc);
+        END
         """);
 }
 

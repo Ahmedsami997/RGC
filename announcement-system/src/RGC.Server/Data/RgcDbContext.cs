@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using RGC.Shared;
 
 namespace RGC.Server.Data;
 
@@ -10,6 +11,7 @@ public class RgcDbContext(DbContextOptions<RgcDbContext> options) : DbContext(op
     public DbSet<Announcement> Announcements => Set<Announcement>();
     public DbSet<AnnouncementRecipient> AnnouncementRecipients => Set<AnnouncementRecipient>();
     public DbSet<ClientActivity> ClientActivity => Set<ClientActivity>();
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -64,6 +66,14 @@ public class RgcDbContext(DbContextOptions<RgcDbContext> options) : DbContext(op
             e.ToTable("ClientActivity");
             e.HasKey(x => new { x.Day, x.ClientId });
             e.Property(x => x.Day).HasColumnType("date");
+        });
+
+        b.Entity<ChatMessage>(e =>
+        {
+            e.ToTable("ChatMessages");
+            e.Property(x => x.Author).HasMaxLength(200);
+            e.Property(x => x.Text).HasMaxLength(ChatLimits.MaxLength).IsRequired();
+            e.HasIndex(x => new { x.ClientId, x.SentAtUtc });
         });
 
         // Everything is stored as UTC; make sure values read back are flagged as UTC

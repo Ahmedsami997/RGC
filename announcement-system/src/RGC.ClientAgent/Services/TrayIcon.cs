@@ -13,6 +13,7 @@ public sealed class TrayIcon : IDisposable
 
     public event Action? ShowLastRequested;
     public event Action? SignInRequested;
+    public event Action? ChatRequested;
     public event Action? ExitRequested;
 
     public TrayIcon(bool allowExit)
@@ -25,6 +26,7 @@ public sealed class TrayIcon : IDisposable
         menu.Items.Add(new ToolStripSeparator());
         _signIn = new ToolStripMenuItem("Sign in with Microsoft 365...", null, (_, _) => SignInRequested?.Invoke()) { Visible = false };
         menu.Items.Add(_signIn);
+        menu.Items.Add("Message IT support...", null, (_, _) => ChatRequested?.Invoke());
         menu.Items.Add("Show last announcement", null, (_, _) => ShowLastRequested?.Invoke());
         menu.Items.Add("Open log folder", null, (_, _) => OpenLogFolder());
         if (allowExit)

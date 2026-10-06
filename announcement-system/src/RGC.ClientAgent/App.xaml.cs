@@ -54,8 +54,30 @@ public partial class App : Application
         _connection.StateChanged += state => Dispatcher.InvokeAsync(() => _tray?.SetState(state, _connection?.SignedInAs));
         _connection.SignInRequired += () => Dispatcher.InvokeAsync(ShowSignIn);
         _connection.AnnouncementReceived += _notifications.Enqueue;
+        _tray.ChatRequested += () => ShowChat(activate: true);
+        _connection.ChatReceived += m => Dispatcher.InvokeAsync(() => OnChat(m));
 
         await _connection.StartAsync();
+    }
+
+    private ChatWindow? _chatWindow;
+
+    private ChatWindow ShowChat(bool activate)
+    {
+        if (_chatWindow is null)
+        {
+            _chatWindow = new ChatWindow(_connection!);
+            _chatWindow.Closed += (_, _) => _chatWindow = null;
+        }
+        _chatWindow.Reveal(activate);
+        return _chatWindow;
+    }
+
+    private void OnChat(RGC.Shared.ChatMessageDto message)
+    {
+        // A message from IT opens the chat in front of the user; echoes of the user's own lines just append.
+        if (!message.FromAdmin && _chatWindow is null) return;
+        ShowChat(activate: message.FromAdmin).Add(message);
     }
 
     private SignInWindow? _signInWindow;

@@ -22,6 +22,8 @@ public partial class MainWindow : Window
         DataContext = _vm;
 
         _vm.SignOutRequested += SignOut;
+        _vm.ChatOpenRequested += id => OpenChat(id);
+        _vm.ChatArrived += OnChatArrived;
         _vm.PropertyChanged += SyncPriorityRadios;
         PriNormal.IsChecked = true;
 
@@ -47,6 +49,28 @@ public partial class MainWindow : Window
         }).IsChecked = true;
     }
 
+    private readonly Dictionary<Guid, ChatWindow> _chats = new();
+
+    private ChatWindow OpenChat(Guid clientId, ChatMessageDto? about = null)
+    {
+        if (!_chats.TryGetValue(clientId, out var window))
+        {
+            var pc = _vm.FindComputer(clientId);
+            window = new ChatWindow(_api, _vm, clientId, pc?.MachineName ?? about?.MachineName ?? "PC", pc?.UserText ?? "") { Owner = this };
+            window.Closed += (_, _) => _chats.Remove(clientId);
+            _chats[clientId] = window;
+        }
+        window.Reveal();
+        return window;
+    }
+
+    private void OnChatArrived(ChatMessageDto m)
+    {
+        if (_chats.TryGetValue(m.ClientId, out var open)) open.Add(m);
+        // A PC writing to IT opens its chat; IT's own lines from another Admin Console don't.
+        else if (!m.FromAdmin) OpenChat(m.ClientId, m);
+    }
+
     private void SignOut()
     {
         if (IsSigningOut) return;
@@ -58,6 +82,7 @@ public partial class MainWindow : Window
     protected override async void OnClosed(EventArgs e)
     {
         base.OnClosed(e);
+        foreach (var chat in _chats.Values.ToList()) chat.Close();
         await _vm.ShutdownAsync();
         _api.Dispose();
     }

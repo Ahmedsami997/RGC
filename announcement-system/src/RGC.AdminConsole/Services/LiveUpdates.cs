@@ -11,6 +11,7 @@ public sealed class LiveUpdates : IAsyncDisposable
     public event Action? ClientsChanged;
     public event Action<RecipientStatusDto>? RecipientUpdated;
     public event Action<AnnouncementSummaryDto>? AnnouncementCreated;
+    public event Action<ChatMessageDto>? ChatMessage;
     public event Action<bool>? ConnectedChanged;
 
     public LiveUpdates(string serverUrl, Func<Task<string?>> tokenProvider)
@@ -23,6 +24,7 @@ public sealed class LiveUpdates : IAsyncDisposable
         _hub.On(AdminClientMethods.ClientsChanged, () => ClientsChanged?.Invoke());
         _hub.On<RecipientStatusDto>(AdminClientMethods.RecipientUpdated, r => RecipientUpdated?.Invoke(r));
         _hub.On<AnnouncementSummaryDto>(AdminClientMethods.AnnouncementCreated, a => AnnouncementCreated?.Invoke(a));
+        _hub.On<ChatMessageDto>(AdminClientMethods.ChatMessage, m => ChatMessage?.Invoke(m));
 
         _hub.Reconnecting += _ => { ConnectedChanged?.Invoke(false); return Task.CompletedTask; };
         _hub.Reconnected += _ => { ConnectedChanged?.Invoke(true); ClientsChanged?.Invoke(); return Task.CompletedTask; };

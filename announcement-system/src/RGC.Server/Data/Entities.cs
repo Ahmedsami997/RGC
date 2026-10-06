@@ -72,3 +72,14 @@ public class ClientActivity
     public DateTime Day { get; set; }
     public Guid ClientId { get; set; }
 }
+
+/// <summary>A line of an IT support chat with a PC.</summary>
+public class ChatMessage
+{
+    public long Id { get; set; }
+    public Guid ClientId { get; set; }
+    public bool FromAdmin { get; set; }
+    public string Author { get; set; } = "";
+    public string Text { get; set; } = "";
+    public DateTime SentAtUtc { get; set; }
+}

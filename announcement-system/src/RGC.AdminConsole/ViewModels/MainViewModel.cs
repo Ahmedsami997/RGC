@@ -50,6 +50,7 @@ public sealed partial class MainViewModel : ObservableObject
         ExportPeopleCommand = new RelayCommand(ExportPeople);
         ExportPersonRecordsCommand = new RelayCommand(ExportPersonRecords, () => SelectedPerson is not null);
         ShowPersonCommand = new RelayCommand(p => ShowPerson(p as string));
+        InitializeSupport();
     }
 
     // ---------------------------------------------------------------- shell
@@ -84,6 +85,7 @@ public sealed partial class MainViewModel : ObservableObject
             _live.ClientsChanged += () => Ui(() => Restart(_clientsDebounce));
             _live.AnnouncementCreated += _ => Ui(() => { Restart(_historyDebounce); Restart(_reportsDebounce); });
             _live.RecipientUpdated += r => Ui(() => OnRecipientUpdated(r));
+            _live.ChatMessage += m => Ui(() => OnChatArrived(m));
             await _live.StartAsync();
         }
         catch (Exception ex)

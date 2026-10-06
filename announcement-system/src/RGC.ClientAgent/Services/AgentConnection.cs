@@ -24,6 +24,8 @@ public sealed class AgentConnection : IAsyncDisposable
     private TaskCompletionSource _signedIn = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public event Action<AnnouncementMessage>? AnnouncementReceived;
+    /// <summary>A chat line from IT (or an echo of one this PC's user sent).</summary>
+    public event Action<ChatMessageDto>? ChatReceived;
     public event Action<ConnectionState>? StateChanged;
     /// <summary>Raised (once until signed in) when the user must sign in with Microsoft 365.</summary>
     public event Action? SignInRequired;
@@ -98,6 +100,11 @@ public sealed class AgentConnection : IAsyncDisposable
         _hub.KeepAliveInterval = TimeSpan.FromSeconds(15);
 
         _hub.On<AnnouncementMessage>(AgentClientMethods.ReceiveAnnouncement, OnAnnouncementAsync);
+        _hub.On<ChatMessageDto>(AgentClientMethods.ReceiveChat, m =>
+        {
+            AgentLog.Info($"Chat {(m.FromAdmin ? "from IT (" + m.Author + ")" : "sent")}");
+            ChatReceived?.Invoke(m);
+        });
 
         _hub.Reconnecting += _ =>
         {
@@ -252,6 +259,22 @@ public sealed class AgentConnection : IAsyncDisposable
         }
 
         AnnouncementReceived?.Invoke(message);
+    }
+
+    /// <summary>Sends a message to IT support. Throws with a readable message when it can't.</summary>
+    public async Task SendChatAsync(string text)
+    {
+        if (_hub is null || _hub.State != HubConnectionState.Connected)
+            throw new InvalidOperationException("Not connected to the RGC server right now. Please try again in a moment.");
+        try
+        {
+            await _hub.InvokeAsync(AgentServerMethods.SendChat, text, _cts.Token);
+        }
+        catch (Exception ex)
+        {
+            AgentLog.Error("Could not send chat message", ex);
+            throw new InvalidOperationException("The message could not be sent. Please try again.");
+        }
     }
 
     /// <summary>Stores the acknowledgement locally first, then sends it (retried on reconnect).</summary>

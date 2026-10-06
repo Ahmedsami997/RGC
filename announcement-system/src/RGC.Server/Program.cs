@@ -102,6 +102,7 @@ builder.Services.AddSingleton<TokenService>();
 builder.Services.AddScoped<ClientDirectory>();
 builder.Services.AddScoped<AnnouncementService>();
 builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<ChatService>();
 builder.Services.AddHostedService<ActivityTracker>();
 
 var app = builder.Build();
@@ -265,6 +266,23 @@ api.MapPost("/announcements", async (SendAnnouncementRequest req, AnnouncementSe
 
 api.MapPost("/announcements/{id:guid}/resend", async (Guid id, AnnouncementService svc, ClaimsPrincipal user, CancellationToken ct) =>
     await svc.ResendToUnreadAsync(id, AuthSetup.GetActorName(user), ct) is { } result ? Results.Ok(result) : Results.NotFound());
+
+api.MapGet("/clients/{id:guid}/chat", (Guid id, ChatService chat, CancellationToken ct) => chat.GetHistoryAsync(id, ct));
+
+api.MapPost("/clients/{id:guid}/chat", async (Guid id, SendChatRequest req, ChatService chat, ClaimsPrincipal user, CancellationToken ct) =>
+{
+    if (ChatService.Validate(req.Text) is { } error)
+        return Results.ValidationProblem(new Dictionary<string, string[]> { ["chat"] = [error] });
+    var author = AuthSetup.GetDisplayName(user) is { Length: > 0 } name ? name : AuthSetup.GetActorName(user);
+    var (result, message) = await chat.SendFromAdminAsync(id, req.Text, author, ct);
+    return result switch
+    {
+        ChatService.SendResult.Sent => Results.Ok(message),
+        ChatService.SendResult.Offline => Results.ValidationProblem(new Dictionary<string, string[]>
+            { ["chat"] = ["This PC is offline. Chat works only while the PC is on and connected."] }),
+        _ => Results.NotFound()
+    };
+});
 
 app.MapHub<AgentHub>(HubRoutes.AgentHub);
 app.MapHub<AdminHub>(HubRoutes.AdminHub);

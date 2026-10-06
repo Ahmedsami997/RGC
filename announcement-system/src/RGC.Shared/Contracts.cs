@@ -21,6 +21,7 @@ public static class HubRoutes
 public static class AgentClientMethods
 {
     public const string ReceiveAnnouncement = "ReceiveAnnouncement";
+    public const string ReceiveChat = "ReceiveChat";
 }
 
 /// <summary>Methods Client Agents invoke on the server.</summary>
@@ -29,6 +30,8 @@ public static class AgentServerMethods
     public const string Register = "Register";
     public const string ConfirmDelivered = "ConfirmDelivered";
     public const string Acknowledge = "Acknowledge";
+    /// <summary>The PC's user writes to IT (string text).</summary>
+    public const string SendChat = "SendChat";
 }
 
 /// <summary>Methods the server invokes on Admin Consoles.</summary>
@@ -37,6 +40,7 @@ public static class AdminClientMethods
     public const string ClientsChanged = "ClientsChanged";
     public const string RecipientUpdated = "RecipientUpdated";
     public const string AnnouncementCreated = "AnnouncementCreated";
+    public const string ChatMessage = "ChatMessage";
 }
 
 public sealed record AgentRegistration(
@@ -181,4 +185,22 @@ public static class AuthRoutes
     public const string Config = "api/auth/config";
     public const string Login = "api/auth/login";
     public const string Me = "api/me";
+}
+
+/// <summary>One line of an IT support chat with a PC.</summary>
+public sealed record ChatMessageDto(
+    long Id,
+    Guid ClientId,
+    string MachineName,
+    // True when IT wrote it, false when the PC's user did.
+    bool FromAdmin,
+    string Author,
+    string Text,
+    DateTime SentAtUtc);
+
+public sealed record SendChatRequest(string Text);
+
+public static class ChatLimits
+{
+    public const int MaxLength = 2000;
 }

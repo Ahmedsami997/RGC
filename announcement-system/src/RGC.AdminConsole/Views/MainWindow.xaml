@@ -373,9 +373,16 @@
                         <StackPanel DockPanel.Dock="Top" DataContext="{Binding SelectedComputer}">
                             <TextBlock Text="{Binding MachineName}" FontSize="18" FontWeight="Bold" Foreground="{StaticResource Brand.Ink}" />
                             <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource OnlineCell}" Margin="0,4,0,8" HorizontalAlignment="Left" />
-                            <Button Content="Send announcement to this computer" HorizontalAlignment="Left" Margin="0,0,0,12" Padding="12,6"
-                                    Style="{StaticResource Button.Primary}"
-                                    Command="{Binding DataContext.SendToComputerCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                            <WrapPanel Margin="0,0,0,12">
+                                <Button Content="Connect" Padding="14,6" Margin="0,0,8,6" Style="{StaticResource Button.Primary}"
+                                        ToolTip="Windows Remote Assistance: see and control this PC's screen after the user clicks Yes"
+                                        Command="{Binding DataContext.RemoteAssistCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                <Button Content="Chat" Padding="14,6" Margin="0,0,8,6" Style="{StaticResource Button.Secondary}"
+                                        ToolTip="Send a message to the person using this PC"
+                                        Command="{Binding DataContext.OpenChatCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                <Button Content="Send announcement" Padding="14,6" Margin="0,0,0,6" Style="{StaticResource Button.Secondary}"
+                                        Command="{Binding DataContext.SendToComputerCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                            </WrapPanel>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
