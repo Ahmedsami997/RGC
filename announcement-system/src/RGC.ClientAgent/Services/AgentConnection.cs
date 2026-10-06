@@ -18,6 +18,9 @@ public sealed class AgentConnection : IAsyncDisposable
     private readonly CancellationTokenSource _cts = new();
     private EntraSignIn? _entra;
     private bool _signInRequested;
+    private DateTime _lastSignInPromptUtc;
+    // A PC nobody has signed in on gets no announcements, so ask again if the window was dismissed.
+    private static readonly TimeSpan SignInReminder = TimeSpan.FromMinutes(30);
     private TaskCompletionSource _signedIn = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public event Action<AnnouncementMessage>? AnnouncementReceived;
@@ -139,10 +142,11 @@ public sealed class AgentConnection : IAsyncDisposable
         }
 
         // Without the agent key the server will refuse us until the user signs in once.
-        if (!_signInRequested)
+        if (!_signInRequested || DateTime.UtcNow - _lastSignInPromptUtc >= SignInReminder)
         {
+            AgentLog.Info(_signInRequested ? "Microsoft 365 sign-in still required; asking again" : "Microsoft 365 sign-in required");
             _signInRequested = true;
-            AgentLog.Info("Microsoft 365 sign-in required");
+            _lastSignInPromptUtc = DateTime.UtcNow;
             SignInRequired?.Invoke();
         }
         return null;

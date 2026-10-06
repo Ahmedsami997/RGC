@@ -14,7 +14,7 @@
 #>
 param(
     [string]$DeployDir = "D:\DATAS\IT\RGC-Deploy",
-    # The new RGC-Agent-v1.1.zip; searched in Downloads and next to this script if not given.
+    # The new RGC-Agent-v*.zip (newest wins); searched in Downloads and next to this script if not given.
     [string]$AgentZip
 )
 $ErrorActionPreference = "Stop"
@@ -22,14 +22,14 @@ $ErrorActionPreference = "Stop"
 if (-not (Test-Path $DeployDir)) { throw "Folder not found: $DeployDir" }
 
 if (-not $AgentZip) {
-    $AgentZip = @(
-        (Join-Path $env:USERPROFILE "Downloads\RGC-Agent-v1.1.zip"),
-        (Join-Path $PSScriptRoot "RGC-Agent-v1.1.zip")
-    ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+    $AgentZip = @((Join-Path $env:USERPROFILE "Downloads"), $PSScriptRoot) |
+        ForEach-Object { Get-ChildItem $_ -Filter "RGC-Agent-v*.zip" -ErrorAction SilentlyContinue } |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1 -ExpandProperty FullName
 }
 if (-not $AgentZip -or -not (Test-Path $AgentZip)) {
-    throw "RGC-Agent-v1.1.zip not found. Put it in Downloads or next to this script, or pass -AgentZip <path>."
+    throw "RGC-Agent-v*.zip not found. Put it in Downloads or next to this script, or pass -AgentZip <path>."
 }
+Write-Host "Using $AgentZip"
 
 $keep = "Deploy-RGC-Agent.ps1", "RGC.Agent.exe", "msalruntime.dll",
         "windowsdesktop-runtime-8-win-x64.exe", "Install-RGC-Agent.bat"
@@ -58,8 +58,10 @@ try {
         Copy-Item $oldExe (Join-Path $backup "RGC.Agent.exe")
     }
     Copy-Item $newExe.FullName $DeployDir -Force
-    $dll = Get-ChildItem $temp -Recurse -Filter "msalruntime.dll" | Select-Object -First 1
-    if ($dll) { Copy-Item $dll.FullName $DeployDir -Force }
+    foreach ($name in "msalruntime.dll", "Deploy-RGC-Agent.ps1") {
+        $file = Get-ChildItem $temp -Recurse -Filter $name | Select-Object -First 1
+        if ($file) { Copy-Item $file.FullName $DeployDir -Force }
+    }
 }
 finally {
     Remove-Item $temp -Recurse -Force -ErrorAction SilentlyContinue
