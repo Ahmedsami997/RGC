@@ -1,0 +1,64 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="RGC.MacAgent.Views.AnnouncementWindow"
+        Title="RGC – Company Announcement"
+        Width="680" SizeToContent="Height"
+        SystemDecorations="None" CanResize="False"
+        Topmost="True" ShowInTaskbar="False" ShowActivated="True"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource Navy}"
+        Icon="/Assets/rgc-icon.png">
+    <Border BorderBrush="{StaticResource NavyLight}" BorderThickness="1">
+        <Grid RowDefinitions="Auto,Auto,*,Auto">
+            <!-- Header: logo, app name, priority -->
+            <Grid x:Name="Header" Background="{StaticResource Navy}" Height="64">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="22,0,0,0">
+                    <Image Source="/Assets/rgc-logo.png" Height="34" />
+                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="RGC" Foreground="White" FontSize="20" FontWeight="Bold" />
+                        <TextBlock Text="Royal Golf Club" Foreground="{StaticResource OnNavyMuted}" FontSize="11" />
+                    </StackPanel>
+                </StackPanel>
+                <Border x:Name="PriorityBadge" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,22,0"
+                        CornerRadius="12" Padding="12,4">
+                    <TextBlock x:Name="PriorityText" Foreground="White" FontSize="11" FontWeight="Bold" />
+                </Border>
+            </Grid>
+
+            <Border x:Name="AccentBar" Grid.Row="1" Height="5" />
+
+            <!-- Body -->
+            <Border Grid.Row="2" Background="White" Padding="34,26,34,10">
+                <Grid RowDefinitions="Auto,Auto,Auto,*">
+                    <TextBlock x:Name="HeadingText" Text="IMPORTANT COMPANY ANNOUNCEMENT"
+                               FontSize="13" FontWeight="Bold" Foreground="{StaticResource Gold}" />
+                    <TextBlock x:Name="TitleText" Grid.Row="1" Margin="0,10,0,0" TextWrapping="Wrap"
+                               FontSize="26" FontWeight="Bold" Foreground="{StaticResource Ink}" />
+                    <TextBlock x:Name="MetaText" Grid.Row="2" Margin="0,6,0,16" FontSize="12"
+                               Foreground="{StaticResource Muted}" />
+                    <Border Grid.Row="3" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="0,16,0,0">
+                        <ScrollViewer x:Name="MessageScroll" VerticalScrollBarVisibility="Auto" MaxHeight="420">
+                            <SelectableTextBlock x:Name="MessageText" TextWrapping="Wrap" FontSize="15" LineHeight="23"
+                                                 Foreground="{StaticResource Ink}" Margin="0,0,8,0" />
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Footer: countdown + close button -->
+            <Border Grid.Row="3" Background="{StaticResource Paper}" BorderBrush="{StaticResource Line}"
+                    BorderThickness="0,1,0,0" Padding="34,16">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock x:Name="CountdownText" FontSize="14" FontWeight="SemiBold"
+                                   Foreground="{StaticResource Ink}" TextWrapping="Wrap" />
+                        <ProgressBar x:Name="CountdownBar" Height="4" MinHeight="4" Margin="0,8,24,0"
+                                     Background="{StaticResource Line}" />
+                    </StackPanel>
+                    <Button x:Name="CloseButton" Grid.Column="1" Classes="primary" Content="I have read this – Close"
+                            IsVisible="False" IsEnabled="False" />
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

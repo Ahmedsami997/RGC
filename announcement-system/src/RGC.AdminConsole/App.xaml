@@ -1,0 +1,125 @@
+<Application x:Class="RGC.AdminConsole.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:v="clr-namespace:RGC.AdminConsole.Views"
+             ShutdownMode="OnExplicitShutdown">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/RGC.Branding;component/Themes/Brand.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <BooleanToVisibilityConverter x:Key="BoolToVis" />
+            <v:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis" />
+            <v:LocalTimeConverter x:Key="LocalTime" />
+            <v:PriorityBrushConverter x:Key="PriorityBrush" />
+            <v:PriorityLabelConverter x:Key="PriorityLabel" />
+            <v:OnlineBrushConverter x:Key="OnlineBrush" />
+            <v:RecipientStateBrushConverter x:Key="StateBrush" />
+            <v:NullToCollapsedConverter x:Key="NullToCollapsed" />
+
+            <!-- Sidebar navigation item -->
+            <Style x:Key="NavItem" TargetType="RadioButton">
+                <Setter Property="Foreground" Value="{StaticResource Brand.OnNavyMuted}" />
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Margin" Value="12,2" />
+                <Setter Property="GroupName" Value="Nav" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Border x:Name="Bd" CornerRadius="8" Padding="14,11" Background="Transparent">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="28" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{TemplateBinding Tag}" FontFamily="Segoe MDL2 Assets" FontSize="15"
+                                               VerticalAlignment="Center" />
+                                    <ContentPresenter Grid.Column="1" VerticalAlignment="Center" />
+                                </Grid>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource Brand.NavyMid}" />
+                                    <Setter Property="Foreground" Value="White" />
+                                </Trigger>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource Brand.NavyLight}" />
+                                    <Setter Property="Foreground" Value="{StaticResource Brand.Green}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Priority picker (radio styled as a card) -->
+            <Style x:Key="PriorityOption" TargetType="RadioButton">
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Margin" Value="0,0,10,0" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Border x:Name="Bd" CornerRadius="8" Padding="14,10" BorderThickness="2"
+                                    BorderBrush="{StaticResource Brand.Line}" Background="White">
+                                <ContentPresenter />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style TargetType="DataGrid">
+                <Setter Property="AutoGenerateColumns" Value="False" />
+                <Setter Property="IsReadOnly" Value="True" />
+                <Setter Property="HeadersVisibility" Value="Column" />
+                <Setter Property="GridLinesVisibility" Value="Horizontal" />
+                <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource Brand.Line}" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Background" Value="White" />
+                <Setter Property="RowBackground" Value="White" />
+                <Setter Property="AlternatingRowBackground" Value="#FAFBFB" />
+                <Setter Property="RowHeight" Value="36" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="SelectionMode" Value="Single" />
+                <Setter Property="CanUserAddRows" Value="False" />
+                <Setter Property="CanUserDeleteRows" Value="False" />
+            </Style>
+            <Style TargetType="DataGridColumnHeader">
+                <Setter Property="Background" Value="{StaticResource Brand.Paper}" />
+                <Setter Property="Foreground" Value="{StaticResource Brand.Muted}" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Padding" Value="10,8" />
+                <Setter Property="BorderBrush" Value="{StaticResource Brand.Line}" />
+                <Setter Property="BorderThickness" Value="0,0,0,1" />
+            </Style>
+            <Style TargetType="DataGridCell">
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Padding" Value="10,0" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="DataGridCell">
+                            <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter VerticalAlignment="Center" />
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <Trigger Property="IsSelected" Value="True">
+                        <Setter Property="Background" Value="{StaticResource Brand.GreenSoft}" />
+                        <Setter Property="Foreground" Value="{StaticResource Brand.Ink}" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

@@ -1,0 +1,55 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6BA401C1-DAFF-49EB-BE2A-CA730D3521F7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RGC.Shared", "src\RGC.Shared\RGC.Shared.csproj", "{67E6D293-DE19-421E-9C2D-50CB549EF76A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RGC.Server", "src\RGC.Server\RGC.Server.csproj", "{921F0F2E-6933-4403-BECF-7F22C4DDBF74}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RGC.ClientAgent", "src\RGC.ClientAgent\RGC.ClientAgent.csproj", "{DE78D19A-44B4-43E2-AD32-5BB24F603A36}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RGC.AdminConsole", "src\RGC.AdminConsole\RGC.AdminConsole.csproj", "{01BE1583-0156-4E4E-85E9-4C03617499A6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RGC.MacAgent", "src\RGC.MacAgent\RGC.MacAgent.csproj", "{E32722C7-5604-4699-A7A9-D016E5395D0D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{67E6D293-DE19-421E-9C2D-50CB549EF76A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{67E6D293-DE19-421E-9C2D-50CB549EF76A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{67E6D293-DE19-421E-9C2D-50CB549EF76A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{67E6D293-DE19-421E-9C2D-50CB549EF76A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{921F0F2E-6933-4403-BECF-7F22C4DDBF74}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{921F0F2E-6933-4403-BECF-7F22C4DDBF74}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{921F0F2E-6933-4403-BECF-7F22C4DDBF74}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{921F0F2E-6933-4403-BECF-7F22C4DDBF74}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DE78D19A-44B4-43E2-AD32-5BB24F603A36}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DE78D19A-44B4-43E2-AD32-5BB24F603A36}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DE78D19A-44B4-43E2-AD32-5BB24F603A36}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DE78D19A-44B4-43E2-AD32-5BB24F603A36}.Release|Any CPU.Build.0 = Release|Any CPU
+		{01BE1583-0156-4E4E-85E9-4C03617499A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{01BE1583-0156-4E4E-85E9-4C03617499A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{01BE1583-0156-4E4E-85E9-4C03617499A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{01BE1583-0156-4E4E-85E9-4C03617499A6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E32722C7-5604-4699-A7A9-D016E5395D0D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E32722C7-5604-4699-A7A9-D016E5395D0D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E32722C7-5604-4699-A7A9-D016E5395D0D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E32722C7-5604-4699-A7A9-D016E5395D0D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{67E6D293-DE19-421E-9C2D-50CB549EF76A} = {6BA401C1-DAFF-49EB-BE2A-CA730D3521F7}
+		{921F0F2E-6933-4403-BECF-7F22C4DDBF74} = {6BA401C1-DAFF-49EB-BE2A-CA730D3521F7}
+		{DE78D19A-44B4-43E2-AD32-5BB24F603A36} = {6BA401C1-DAFF-49EB-BE2A-CA730D3521F7}
+		{01BE1583-0156-4E4E-85E9-4C03617499A6} = {6BA401C1-DAFF-49EB-BE2A-CA730D3521F7}
+		{E32722C7-5604-4699-A7A9-D016E5395D0D} = {6BA401C1-DAFF-49EB-BE2A-CA730D3521F7}
+	EndGlobalSection
+EndGlobal
