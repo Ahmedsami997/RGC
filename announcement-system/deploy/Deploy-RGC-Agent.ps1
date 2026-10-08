@@ -57,6 +57,21 @@ try {
     $idFile = Join-Path $dataDir "client-id"
     if (-not (Test-Path $idFile)) { [guid]::NewGuid().ToString() | Set-Content -Path $idFile -Encoding ASCII }
 
+    # 3b. Let IT offer Windows Remote Assistance (Admin Console "Connect") on domain PCs:
+    #     Windows' own Remote Assistance firewall rules for the domain network. The policy itself
+    #     (who may offer help) comes from Group Policy - deploy\Enable-RGC-RemoteAssistance.ps1.
+    if ((Get-CimInstance Win32_ComputerSystem).PartOfDomain) {
+        try {
+            $ra = Get-NetFirewallRule -ErrorAction Stop | Where-Object {
+                ($_.Group -eq "@FirewallAPI.dll,-33002" -or $_.DisplayGroup -eq "Remote Assistance") -and
+                $_.Direction -eq "Inbound" -and "$($_.Profile)" -match "Domain|Any"
+            }
+            if ($ra) { $ra | Enable-NetFirewallRule; Log "Remote Assistance firewall rules enabled ($(@($ra).Count))" }
+            else { Log "Remote Assistance firewall rules not found on this PC" }
+        }
+        catch { Log "Could not enable Remote Assistance firewall rules: $($_.Exception.Message)" }
+    }
+
     # 4. Start at every logon, for every user
     $exe = Join-Path $InstallDir "RGC.Agent.exe"
     Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "RGC Agent" -Value "`"$exe`" --autostart"
