@@ -41,6 +41,10 @@ Real-time company-wide announcements for Royal Golf Club PCs, built with **C# .N
 
 **Announcement popup**
 - Modal, always on top of all applications (re-asserted every 2 s and on focus loss)
+- **The PC can't be used until it is acknowledged:** every monitor (taskbar included) is covered,
+  and the Windows key, Alt+Tab, Alt+Esc, Ctrl+Esc and Ctrl+Shift+Esc are blocked. Ctrl+Alt+Del can't be
+  blocked by any app; locking the PC or shutting down still works and the popup is back afterwards.
+  Turn off per PC with `"LockScreen": false` in `agentsettings.json`
 - No Close (X) button and no close action for the first 10 seconds, with the countdown
   *"You can close this message in 10 seconds..."*
 - Alt+F4, Escape and the taskbar "Close window" are blocked

@@ -13,6 +13,8 @@ public sealed class AgentSettings
     public int CountdownSeconds { get; set; } = 10;
     public bool AutoStart { get; set; } = true;
     public bool AllowUserExit { get; set; }
+    /// <summary>Cover the screen and block app switching until the announcement is acknowledged.</summary>
+    public bool LockScreen { get; set; } = true;
 
     /// <summary>
     /// Loads agentsettings.json from the install folder, then lets

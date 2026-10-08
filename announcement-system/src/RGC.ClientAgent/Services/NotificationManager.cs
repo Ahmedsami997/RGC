@@ -33,8 +33,11 @@ public sealed class NotificationManager(AgentConnection connection, AgentSetting
     {
         if (_showing) return;
         _showing = true;
+        // The PC can't be used until every queued announcement has been acknowledged.
+        var screenLock = settings.LockScreen ? new ScreenLock() : null;
         try
         {
+            screenLock?.Show();
             while (_queue.Count > 0 && !SessionEnding)
             {
                 var message = _queue.Dequeue();
@@ -42,6 +45,7 @@ public sealed class NotificationManager(AgentConnection connection, AgentSetting
                 PlaySound(message.Priority);
 
                 var window = new AnnouncementWindow(message, settings.CountdownSeconds);
+                if (screenLock is not null) window.Owner = screenLock.Cover;   // owned windows stay above the cover
                 window.ShowDialog();
 
                 if (window.Acknowledgement is { } ack)
@@ -57,6 +61,7 @@ public sealed class NotificationManager(AgentConnection connection, AgentSetting
         }
         finally
         {
+            screenLock?.Dispose();
             _showing = false;
         }
     }
