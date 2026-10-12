@@ -1,0 +1,7 @@
+{
+  "ServerUrl": "http://rgc-server:5080",
+  "AgentKey": "CHANGE-ME-shared-agent-key",
+  "CountdownSeconds": 10,
+  "AutoStart": true,
+  "AllowUserExit": false
+}

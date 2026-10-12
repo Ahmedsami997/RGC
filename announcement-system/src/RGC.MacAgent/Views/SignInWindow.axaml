@@ -1,0 +1,30 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="RGC.MacAgent.Views.SignInWindow"
+        Title="RGC – Sign in" Width="460" SizeToContent="Height" CanResize="False"
+        WindowStartupLocation="CenterScreen" Topmost="True" Background="White"
+        Icon="/Assets/rgc-icon.png">
+    <StackPanel>
+        <Border Background="{StaticResource Navy}" Padding="24,18">
+            <StackPanel Orientation="Horizontal">
+                <Image Source="/Assets/rgc-logo.png" Height="34" />
+                <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="RGC" Foreground="White" FontSize="20" FontWeight="Bold" />
+                    <TextBlock Text="Company Announcements" Foreground="{StaticResource OnNavyMuted}" FontSize="11" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+        <StackPanel Margin="28,22,28,24">
+            <TextBlock Text="Sign in to receive company announcements" FontSize="16" FontWeight="SemiBold"
+                       Foreground="{StaticResource Ink}" TextWrapping="Wrap" />
+            <TextBlock Margin="0,8,0,18" FontSize="13" Foreground="{StaticResource Muted}" TextWrapping="Wrap"
+                       Text="Use your Royal Golf Club Microsoft 365 account (your work email). Your browser opens for the sign-in. You only need to do this once on this Mac." />
+            <TextBlock x:Name="ErrorText" Foreground="{StaticResource Critical}" TextWrapping="Wrap"
+                       Margin="0,0,0,12" IsVisible="False" />
+            <Button x:Name="SignInButton" Classes="primary" Content="Sign in with Microsoft 365"
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" IsDefault="True" />
+            <Button x:Name="LaterButton" Content="Later" Margin="0,8,0,0"
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+        </StackPanel>
+    </StackPanel>
+</Window>

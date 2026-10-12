@@ -1,0 +1,23 @@
+<Window x:Class="RGC.AdminConsole.Views.ChatWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:RGC.Branding.Controls;assembly=RGC.Branding"
+        Title="RGC – Chat" Width="440" Height="580" MinWidth="360" MinHeight="380"
+        WindowStartupLocation="CenterOwner"
+        FontFamily="{StaticResource Brand.Font}" Background="White"
+        Icon="pack://application:,,,/RGC.Branding;component/Assets/rgc-icon.png">
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Background="{StaticResource Brand.Navy}" Padding="18,12">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Connect" Style="{StaticResource Button.Primary}" Padding="14,6"
+                        VerticalAlignment="Center" Click="Connect_Click"
+                        ToolTip="Windows Remote Assistance: see and control this PC's screen after the user clicks Yes" />
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock x:Name="MachineText" Foreground="White" FontSize="16" FontWeight="Bold" />
+                    <TextBlock x:Name="UserText" Foreground="{StaticResource Brand.OnNavyMuted}" FontSize="12" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+        <controls:ChatPanel x:Name="Chat" />
+    </DockPanel>
+</Window>

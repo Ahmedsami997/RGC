@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- System.Windows.Forms.NotifyIcon is used for the tray icon. -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>RGC.Agent</AssemblyName>
+    <RootNamespace>RGC.ClientAgent</RootNamespace>
+    <ApplicationIcon>..\RGC.Branding\Assets\rgc.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- WinForms is only used for the tray icon; keep its types out of global usings to avoid WPF name clashes. -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.11" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RGC.Shared\RGC.Shared.csproj" />
+    <ProjectReference Include="..\RGC.Branding\RGC.Branding.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="agentsettings.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

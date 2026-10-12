@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- RGC Agent for macOS: menu-bar app built with Avalonia (the Windows agent is WPF). -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>RGC.Agent</AssemblyName>
+    <RootNamespace>RGC.MacAgent</RootNamespace>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.3" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.11" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.66.2" />
+    <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" Version="4.66.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RGC.Shared\RGC.Shared.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="..\RGC.Branding\Assets\rgc-logo.png" Link="Assets\rgc-logo.png" />
+    <AvaloniaResource Include="..\RGC.Branding\Assets\rgc-icon.png" Link="Assets\rgc-icon.png" />
+  </ItemGroup>
+</Project>

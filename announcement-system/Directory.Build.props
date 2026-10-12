@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Company>Royal Golf Club</Company>
+    <Product>RGC Announcements</Product>
+    <Version>1.4.0</Version>
+    <!-- Lets the WPF projects compile on non-Windows build machines/CI. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+</Project>
