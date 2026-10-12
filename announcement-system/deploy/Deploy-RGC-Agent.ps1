@@ -8,7 +8,11 @@
 #>
 param(
     [string]$ServerUrl = "https://rgc-announcements-ayakghhpdhfkbydr.uaenorth-01.azurewebsites.net",
-    [string]$InstallDir = "$env:ProgramFiles\RGC\Agent"
+    [string]$InstallDir = "$env:ProgramFiles\RGC\Agent",
+    # Shared terminals (POS, kiosks) that should connect WITHOUT a Microsoft 365 sign-in.
+    # Pass the server's agent key here; the PC is then identified by its computer name only
+    # and never shows a sign-in prompt. Leave empty on normal staff PCs so each user signs in.
+    [string]$AgentKey = ""
 )
 $ErrorActionPreference = "Stop"
 $dataDir = Join-Path $env:ProgramData "RGC"
@@ -51,9 +55,15 @@ try {
     # 3. Settings (machine-wide) and a stable id for this PC
     # Write to a temp file and swap it in, so a power cut never leaves a half-written settings file.
     $settingsFile = Join-Path $dataDir "agentsettings.json"
-    @{ ServerUrl = $ServerUrl; AgentKey = ""; CountdownSeconds = 10; AutoStart = $true; AllowUserExit = $false } |
+    # On a shared terminal, keep any agent key already installed unless a new one is passed in,
+    # so re-running the GPO/startup script never silently turns sign-in back on for POS PCs.
+    if (-not $AgentKey -and (Test-Path $settingsFile)) {
+        try { $AgentKey = (Get-Content $settingsFile -Raw | ConvertFrom-Json).AgentKey } catch { }
+    }
+    @{ ServerUrl = $ServerUrl; AgentKey = "$AgentKey"; CountdownSeconds = 10; AutoStart = $true; AllowUserExit = $false } |
         ConvertTo-Json | Set-Content -Path "$settingsFile.tmp" -Encoding UTF8
     Move-Item "$settingsFile.tmp" $settingsFile -Force
+    if ($AgentKey) { Log "Agent key set: this PC connects without Microsoft 365 sign-in" }
     $idFile = Join-Path $dataDir "client-id"
     if (-not (Test-Path $idFile)) { [guid]::NewGuid().ToString() | Set-Content -Path $idFile -Encoding ASCII }
 
