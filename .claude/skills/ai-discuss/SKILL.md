@@ -1,6 +1,6 @@
 ---
 name: ai-discuss
-description: Run an "AI Discuss" session — a panel of specialist AI members debates the user's idea, two AI judges review the panel's decision (sending it back to the members for another round if they reject it), then the judges deliver the final idea, work method and best option. The whole debate is shown live with an emoji identity per speaker. Use ONLY when the user explicitly asks for it (/ai-discuss, "ai discuss", "ناقش هذه الفكرة", "اعرض الفكرة على الأعضاء والحكام"). Never start it on your own — it launches 12+ agents.
+description: Run an "AI Discuss" session — a panel of specialist AI members debates the user's idea, two AI judges review the panel's decision (sending it back to the members for another round if they reject it), then the judges deliver the final idea, work method and best option. The whole debate is shown live with an emoji identity per speaker, and mirrored to a live pixel board the user can watch. Use ONLY when the user explicitly asks for it (/ai-discuss, "ai discuss", "ناقش هذه الفكرة", "اعرض الفكرة على الأعضاء والحكام"). Never start it on your own — it launches 12+ agents.
 argument-hint: "<الفكرة>"
 ---
 
@@ -28,11 +28,49 @@ If a `discuss-*` agent type is not available (agents load when the session start
 4. **Judges must both approve.** If either judge rejects, the decision returns to the members. **Maximum 3 judging cycles** — then stop looping and report honestly (Step 7).
 5. **Quorum:** at least 3 members and both judges. If an agent fails, retry it once; if it fails again, mark it `💤 غائب` and continue (a missing judge ⇒ tell the user and stop).
 6. Agents are stateless: put everything they need (idea, context, transcript so far) in each prompt.
-7. This skill only deliberates. Never edit project files or start implementing; at the end, ask the user whether to proceed.
+7. This skill only deliberates. Never edit project files or start implementing; at the end, ask the user whether to proceed. (Writing to the live board's database is not editing the project.)
+8. **📺 Board:** wherever the flow or the "Live board mirror" table says to, mirror the phase to the board; if the board is off, skip it silently and carry on.
 
 ## Project context (edit me — pasted into every agent prompt as `{CONTEXT}`)
 
 > The current working directory is the Royal Golf Club (RGC) outlet P&L dashboard: static front end `public/index.html`, Python serverless functions in `api/` that read Odoo, Basic-Auth `middleware.js`, deployed on Vercel (see README.md). Use it only if relevant — the idea may be about something else (club operations, F&B, membership, IT…). Check files sparingly.
+
+## Live board mirror (📺 optional, never blocks the session)
+
+The user can watch the session on a live pixel board: an Artifact whose URL is in `.claude/skills/ai-discuss/board.json` (`url`). You feed it by writing documents into the artifact's database with the `ArtifactData` tool (deferred: load it once with ToolSearch `select:ArtifactData`). The page subscribes live, so every write appears on the board within seconds, typed out speaker by speaker.
+
+- **Bootstrap (Step 0):** `Read` board.json. If it is missing, or `ArtifactData` cannot be loaded, or a write fails twice, say once "اللوحة غير متاحة، سأكمل بالنص فقط" and continue text-only. Otherwise get `sid` = `s-` + the output of `date +%Y%m%d-%H%M%S`, start a counter `seq` at 0, and print one line `📺 اللوحة الحيّة: {url}` right under the banner.
+- **Every write is one `batch`** of `set` ops with inline `data`: events go to collection `events`, doc id `{sid}-{seq:03d}` (seq increments per event, 3 digits); the session goes to collection `sessions`, doc id `{sid}`.
+- **Same words as the chat.** Event text is exactly what you print in the chat (the agents' own words). The board is a mirror, never a substitute: always print in the chat too.
+- **Order:** write to the board first, then print the same phase in the chat. Before launching a phase, write its `phase` + `thinking` events so the board shows the members typing while the agents run.
+- **Keys:** member key = agent type without `discuss-` (`analyst`, `architect`, `skeptic`, `operator`, `innovator`); `discuss-judge-logic` = `judge1`, `discuss-judge-value` = `judge2`. For a member the board does not know, add `castMeta: {key: {name, emoji, color}}` to the session doc.
+
+Documents (all fields are plain JSON; omit what does not apply):
+
+| Doc | Fields |
+|---|---|
+| session `sessions/{sid}` | `idea` (one-sentence restatement), `status` (`running`), `started` (date), `cast: {members: [keys]}`, optional `castMeta` |
+| `phase` | `kind:"phase"`, `sid`, `seq`, `label` (the chat header, e.g. `━━ 🗣️ الجولة 1 · المواقف ━━`), `round` |
+| `thinking` | `kind:"thinking"`, `who`: `"members"` / `"judges"` / `[keys]` |
+| `speech` | `kind:"speech"`, `who`, `text`, plus one of `stance` (`SUPPORT`/`CONDITIONAL`/`OPPOSE`), `vote` (`APPROVE`/`APPROVE_WITH_CHANGES`/`REJECT`), `verdict` (`APPROVE`/`REJECT`); `extras: [{label, text}]` (e.g. `🔧 الاقتراح`, `✏️ التعديلات`, `⛔ العوائق`, `⚠️ أضعف نقطة`) |
+| `score` | `kind:"score"`, `chips: [{who, mark}]` (mark = the emoji from the chat scoreboard), `summary` |
+| `note` | `kind:"note"`, `who:"scribe"`, `text` (e.g. the judges' blockers when the decision goes back) |
+| `decision` | `kind:"decision"`, `round`, `tally: {yes, yesWith, no}`, `decision`, `idea`, `method[]`, `agreed[]`, `rejected[]`, `disputed[]`, `dissent: [{who, text}]`, `assumptions[]` |
+| `final` | `kind:"final"`, `approved` (bool), `round`, `idea`, `method[]`, `best`, `risks[]`, `doFirst`, `weakness: [{who, text}]`, `assumptions[]`, `how[]` |
+| `end` | `kind:"end"`, `status` |
+
+Every event doc also carries `sid` and `seq`. When to write:
+
+| Point | One batch containing |
+|---|---|
+| Step 0, before Step 1 launches | session doc + `phase` (positions) + `thinking` members |
+| Step 1 returned | `speech` × members (`stance`, `extras` = proposal) + `score` |
+| Step 2, before launch | `phase` (debate) + `thinking` members |
+| Step 2 returned | `speech` × members (`vote`, `extras` = amendments unless "none") + `score` |
+| Step 3 | `phase` (قرار الأعضاء) + `decision`; then, before launching the judges, `phase` (الحكّام يراجعون) + `thinking` judges |
+| Step 4 returned | `speech` × 2 (`verdict`, `extras` = blockers and weakness) + `score` |
+| Step 5 | `phase` (الجولة N+1) + `note` (the blockers) + `thinking` members; after they return `speech` × members + `score`; then Step 3's writes again |
+| Step 6 or 7 | `phase` (الحُكم النهائي) + `final` + `end`; then `update` the session doc with `status` (`approved` or `no-agreement`) and `if_version` = the version its creation returned |
 
 ## Screen conventions (what the user sees)
 
@@ -58,6 +96,8 @@ Print this banner (the creature from the user's image), the cast, the legend and
 ```
 
 Then: `🧠 **AI DISCUSS** — جلسة نقاش` · `👥 الأعضاء:` {tags and names, from the agents actually available} · `⚖️ الحكّام:` 🟨🧑‍⚖️ الحَكَم الأول (المنطق والجدوى) · ⬜🏛️ الحَكَم الثاني (القيمة والمخاطر) · `📝 كاتب الجلسة: Claude (محايد، لا يصوّت)` · `📌 الفكرة:` {one-sentence restatement}.
+
+📺 Bootstrap the board now (see "Live board mirror"): create the session and write the first batch before launching Step 1.
 
 ### Step 1 — Positions (blind, parallel)
 Print `⏳ {member colour squares} الأعضاء يكتبون مواقفهم…`, then launch every member with this prompt (`{IDEA}` = the user's idea verbatim):

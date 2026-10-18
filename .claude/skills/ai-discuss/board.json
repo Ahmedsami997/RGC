@@ -1,0 +1,5 @@
+{
+  "url": "https://claude.ai/artifact/BmrBooFVNwmx2tEAWsJBQt",
+  "source": ".claude/skills/ai-discuss/board.html",
+  "note": "Live pixel board. /ai-discuss mirrors each session into this artifact's database (collections: sessions, events). To redesign the page, edit board.html and publish it to this url."
+}
