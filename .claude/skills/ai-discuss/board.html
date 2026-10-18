@@ -190,7 +190,14 @@ const CAST = {
 };
 const DEFAULT_MEMBERS = ['analyst', 'architect', 'skeptic', 'operator', 'innovator'];
 let castMeta = {};
-const castOf = (key) => CAST[key] || { n: (castMeta[key] && castMeta[key].name) || key, e: (castMeta[key] && castMeta[key].emoji) || '👾', c: (castMeta[key] && castMeta[key].color) || '#9aa3ad', pal: {} };
+const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+// colours from the database end up inside SVG markup, so only a plain #rrggbb is ever accepted
+const safeColor = (v) => (typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v) ? v : '#9aa3ad');
+const castOf = (key) => {
+  if (hasOwn(CAST, key)) return CAST[key];
+  const m = (castMeta && typeof castMeta === 'object' && hasOwn(castMeta, key) && castMeta[key]) || {};
+  return { n: String(m.name || key).slice(0, 40), e: String(m.emoji || '👾').slice(0, 8), c: safeColor(m.color), pal: {} };
+};
 
 function sprite(c) {
   const m = new Map();
@@ -470,10 +477,64 @@ $('#replay').addEventListener('click', () => {
   list.forEach((ev) => queue.push(ev)); pump();
 });
 
+/* ---------- HTTP source: used by the self-hosted copy (it has <meta name="board-api">) ----------
+   Polls /api/board and answers with the same shape as the artifact database above, so the page logic is shared.
+   An idle poll is one cheap request that the server answers from a single Redis key. */
+function httpDb(api) {
+  const sessSubs = [], evSubs = [], held = {};
+  let since = '', timer = null, busy = false, again = false, running = false, lastChange = Date.now(), fails = 0;
+  const docOf = (id, d) => ({ id, exists: true, data: () => d });
+  const drop = (arr, s) => () => { const i = arr.indexOf(s); if (i >= 0) arr.splice(i, 1); };
+  const schedule = () => {
+    clearTimeout(timer);
+    if (document.hidden) return;
+    const base = running || Date.now() - lastChange < 30000 ? 1500 : 15000;
+    timer = setTimeout(poll, fails ? Math.min(30000, base * (fails + 1)) : base);
+  };
+  const want = () => { if (busy) again = true; else poll(); };
+  async function poll() {
+    if (busy) return;
+    busy = true; clearTimeout(timer);
+    const sid = evSubs[0] ? evSubs[0].sid : '';
+    try {
+      const r = await fetch(api + '?sid=' + encodeURIComponent(sid) + '&from=' + (held[sid] || 0) + '&since=' + encodeURIComponent(since), { cache: 'no-store', credentials: 'same-origin' });
+      if (r.status === 401) { setLive('', 'انتهى الدخول، أعد تحميل الصفحة'); busy = false; return; }
+      if (!r.ok) throw new Error('http ' + r.status);
+      const j = await r.json(); fails = 0; running = !!j.running;
+      if (j.changed !== false) {
+        since = j.head ? String(j.head.updated) : ''; lastChange = Date.now();
+        const sdocs = (j.sessions || []).map((s) => docOf(s.id, s));
+        sessSubs.slice().forEach((s) => s.next({ docs: sdocs, metadata: { fromCache: false } }));
+        evSubs.slice().forEach((s) => {
+          if (s.sid !== j.sid) return;
+          const docs = (j.events || []).map((e) => docOf(j.sid + '-' + String(e.seq).padStart(3, '0'), e));
+          held[j.sid] = j.total || 0;
+          if (docs.length || !s.delivered) { s.delivered = true; s.next({ docs, metadata: { fromCache: false } }); }
+        });
+      }
+    } catch (e) { fails++; setLive('', 'انقطع الاتصال، أعيد المحاولة…'); }
+    busy = false;
+    if (again) { again = false; poll(); return; }
+    schedule();
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
+  return {
+    collection(name) {
+      if (name === 'sessions') return { onSnapshot(next) { const s = { next }; sessSubs.push(s); since = ''; want(); return drop(sessSubs, s); } };
+      const evQ = (sid) => ({
+        orderBy() { return this; }, limit() { return this; },
+        onSnapshot(next) { const s = { sid, next, delivered: false }; evSubs.push(s); since = ''; held[sid] = 0; want(); return drop(evSubs, s); },
+      });
+      return { where: (f, op, v) => evQ(v) };
+    },
+  };
+}
+
 /* ---------- boot ---------- */
 buildStage(); renderEmpty();
 (async () => {
-  try { db = await window.claude.use('db'); } catch (e) { db = null; }
+  const api = document.querySelector('meta[name="board-api"]');
+  try { db = api ? httpDb(api.content) : await window.claude.use('db'); } catch (e) { db = null; }
   if (!db) { setLive('', 'يعمل داخل claude.ai فقط'); return; }
   setLive('', 'بانتظار جلسة');
   db.collection('sessions').onSnapshot(onSessions, () => setLive('', 'انقطع الاتصال'));

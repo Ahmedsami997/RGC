@@ -1,0 +1,9 @@
+{
+  "name": "ai-discuss-board",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/api.test.mjs",
+    "sync": "python3 sync.py"
+  }
+}

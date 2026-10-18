@@ -1,5 +1,5 @@
 {
-  "url": "https://claude.ai/artifact/BmrBooFVNwmx2tEAWsJBQt",
-  "source": ".claude/skills/ai-discuss/board.html",
-  "note": "Live pixel board. /ai-discuss mirrors each session into this artifact's database (collections: sessions, events). To redesign the page, edit board.html and publish it to this url."
+  "http": { "url": "https://ai-disscuss.theroyalgolfclub.com" },
+  "artifact": { "url": "https://claude.ai/artifact/BmrBooFVNwmx2tEAWsJBQt", "source": ".claude/skills/ai-discuss/board.html" },
+  "note": "Where /ai-discuss mirrors a session so it can be watched live. 'http' is the self-hosted board (see ai-discuss-board/README.md); it is used when the environment variable AI_DISCUSS_TOKEN is set and the board answers a ping. 'artifact' is the claude.ai fallback."
 }
