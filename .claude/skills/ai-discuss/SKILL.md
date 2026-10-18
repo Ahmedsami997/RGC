@@ -37,10 +37,10 @@ If a `discuss-*` agent type is not available (agents load when the session start
 
 ## Live board mirror (📺 optional, never blocks the session)
 
-The user can watch the session on a live pixel board: an Artifact whose URL is in `.claude/skills/ai-discuss/board.json` (`url`). You feed it by writing documents into the artifact's database with the `ArtifactData` tool (deferred: load it once with ToolSearch `select:ArtifactData`). The page subscribes live, so every write appears on the board within seconds, typed out speaker by speaker.
+The user can watch the session on a live pixel board. Two boards show exactly the same thing, and `.claude/skills/ai-discuss/board.json` says where each is: **`http`**, the self-hosted board (`http.url`, ai-disscuss.theroyalgolfclub.com), and **`artifact`**, a claude.ai Artifact (`artifact.url`). Use one transport per session, chosen at bootstrap: **HTTP** if the environment variable `AI_DISCUSS_TOKEN` is set (test with `[ -n "$AI_DISCUSS_TOKEN" ]`, never print it) and `python3 .claude/skills/ai-discuss/board_post.py --ping` prints `ok pong`; otherwise the **artifact**, fed through the `ArtifactData` tool (deferred: load it once with ToolSearch `select:ArtifactData`); if neither works, text-only. Either way the page updates within seconds, typed out speaker by speaker.
 
-- **Bootstrap (Step 0):** `Read` board.json. If it is missing, or `ArtifactData` cannot be loaded, or a write fails twice, say once "اللوحة غير متاحة، سأكمل بالنص فقط" and continue text-only. Otherwise get `sid` = `s-` + the output of `date +%Y%m%d-%H%M%S`, start a counter `seq` at 0, and print one line `📺 اللوحة الحيّة: {url}` right under the banner.
-- **Every write is one `batch`** of `set` ops with inline `data`: events go to collection `events`, doc id `{sid}-{seq:03d}` (seq increments per event, 3 digits); the session goes to collection `sessions`, doc id `{sid}`.
+- **Bootstrap (Step 0):** `Read` board.json and pick the transport as above. If none works, or a write fails twice, say once "اللوحة غير متاحة، سأكمل بالنص فقط" and continue text-only. Otherwise get `sid` = `s-` + the output of `date +%Y%m%d-%H%M%S`, start a counter `seq` at 0 (artifact transport only), and print one line `📺 اللوحة الحيّة: {url of the chosen board}` right under the banner.
+- **Every write is one call.** *Artifact:* one `ArtifactData` `batch` of `set` ops with inline `data`: events go to collection `events`, doc id `{sid}-{seq:03d}` (seq increments per event, 3 digits); the session goes to collection `sessions`, doc id `{sid}`; every event doc also carries `sid` and `seq`. *HTTP:* one call of `python3 .claude/skills/ai-discuss/board_post.py` with the JSON on stdin (a `<<'JSON'` heredoc): `{"sid": "...", "session": {...}, "events": [{...}, ...]}`; leave out `session` when it does not change and do not put `sid` or `seq` inside the events (the server numbers them). It prints `ok <n>` or `error: ...`. The documents themselves are identical on both.
 - **Same words as the chat.** Event text is exactly what you print in the chat (the agents' own words). The board is a mirror, never a substitute: always print in the chat too.
 - **Order:** write to the board first, then print the same phase in the chat. Before launching a phase, write its `phase` + `thinking` events so the board shows the members typing while the agents run.
 - **Keys:** member key = agent type without `discuss-` (`analyst`, `architect`, `skeptic`, `operator`, `innovator`); `discuss-judge-logic` = `judge1`, `discuss-judge-value` = `judge2`. For a member the board does not know, add `castMeta: {key: {name, emoji, color}}` to the session doc.
@@ -59,7 +59,7 @@ Documents (all fields are plain JSON; omit what does not apply):
 | `final` | `kind:"final"`, `approved` (bool), `round`, `idea`, `method[]`, `best`, `risks[]`, `doFirst`, `weakness: [{who, text}]`, `assumptions[]`, `how[]` |
 | `end` | `kind:"end"`, `status` |
 
-Every event doc also carries `sid` and `seq`. When to write:
+When to write:
 
 | Point | One batch containing |
 |---|---|
@@ -70,7 +70,7 @@ Every event doc also carries `sid` and `seq`. When to write:
 | Step 3 | `phase` (قرار الأعضاء) + `decision`; then, before launching the judges, `phase` (الحكّام يراجعون) + `thinking` judges |
 | Step 4 returned | `speech` × 2 (`verdict`, `extras` = blockers and weakness) + `score` |
 | Step 5 | `phase` (الجولة N+1) + `note` (the blockers) + `thinking` members; after they return `speech` × members + `score`; then Step 3's writes again |
-| Step 6 or 7 | `phase` (الحُكم النهائي) + `final` + `end`; then `update` the session doc with `status` (`approved` or `no-agreement`) and `if_version` = the version its creation returned |
+| Step 6 or 7 | `phase` (الحُكم النهائي) + `final` + `end`; then set the session `status` (`approved` or `no-agreement`): HTTP, put `session: {"status": ...}` in this same call; artifact, `update` the session doc with `if_version` = the version its creation returned |
 
 ## Screen conventions (what the user sees)
 
